@@ -17,7 +17,7 @@ is the Pi's address on your network.
 ## Repository layout
 
 ```
-bin/cowrie-stats            summaries, session list, replay, downloads   -> /usr/local/bin/
+bin/cowrie-stats            summaries, session list, replay, files       -> /usr/local/bin/
 bin/cowrie-report           sends a summary to ntfy                      -> /usr/local/bin/
 install-cowrie-report.sh    installs both scripts, ntfy settings, daily timer (22:00)
 systemd/cowrie.service      runs Cowrie at boot                          -> /etc/systemd/system/
@@ -145,7 +145,8 @@ timer), then `sudo systemctl daemon-reload`.
 | `cowrie-stats sessions [N]` | Numbered list of logged-in sessions, newest first, in local time |
 | `cowrie-stats replay [#\|ID]` | Replays a session like a video with `playlog` (asks which if omitted) |
 | `cowrie-stats show <#\|ID>` | One session's commands and files as text |
-| `cowrie-stats downloads` | Captured files: SHA-256, saved path, source URLs |
+| `cowrie-stats files` | Captured files: how each arrived, SHA-256, saved path, and the sessions to replay |
+| `cowrie-stats sessions --files [N]` | Only sessions that fetched or pushed a file |
 
 Reads the current and rotated `cowrie.json*` logs and skips malformed lines.
 It re-runs itself as the `cowrie` user via sudo, so Cowrie's Python environment

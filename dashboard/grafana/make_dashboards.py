@@ -195,11 +195,17 @@ overview = [
          {"login.success": GREEN, "login.failed": ORANGE, "command.input": CYAN}),
 
     row("Malware and sessions", 17),
-    table("Captured files",
-          f"SELECT min(ts) AS first_seen, shasum AS sha256, count(*) AS times, max(coalesce(url, filename)) AS source "
-          f"FROM events WHERE {FILES} AND shasum IS NOT NULL AND {T} GROUP BY 2 ORDER BY 1 DESC LIMIT 50", 0, 18, 24, 6,
-          [stamp("first_seen"), meter("times", RED, 120), column("sha256", ("custom.width", 480))],
-          desc="Metadata only: the files themselves stay on the Pi."),
+    table("Captured files: click a session to see how each arrived",
+          "SELECT min(ts) AS first_seen, session, "
+          "CASE WHEN eventid LIKE '%upload' THEN 'pushed' ELSE 'fetched' END AS how, src_ip, "
+          "CASE WHEN shasum LIKE 'e3b0c44298fc1c149afbf4c8996fb924%' THEN 'empty file' ELSE coalesce(url, filename, 'not logged') END AS source, "
+          f"shasum AS sha256 FROM events WHERE {FILES} AND shasum IS NOT NULL AND {T} "
+          "GROUP BY session, eventid, src_ip, shasum, url, filename ORDER BY 1 DESC LIMIT 50", 0, 18, 24, 6,
+          [stamp("first_seen"),
+           column("session", ("links", [{"title": "Open session", "url": SESSION_URL}]), ("custom.width", 130)),
+           column("how", ("custom.width", 80)), column("src_ip", ("custom.width", 140)),
+           column("sha256", ("custom.width", 480))],
+          desc="fetched: an attacker's command made the honeypot download it. pushed: sent directly (SCP/SFTP). The files stay on the Pi."),
     table("Sessions: logged-in first, click an ID for details",
           "SELECT s.started, s.session, s.protocol, s.src_ip, coalesce(g.country, 'Unknown') AS country, s.logged_in, "
           "s.username, s.password, s.commands, s.files, round(s.duration_s::numeric, 1) AS seconds "

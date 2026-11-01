@@ -17,13 +17,15 @@ TOP=10
 usage() {
   cat <<'EOF'
 Usage:
-  cowrie-stats                   summary: totals, top IPs, credentials, commands, downloads
+  cowrie-stats                   summary: totals, top IPs, credentials, commands, files
   cowrie-stats summary [--hours H] [--top N]
                                  summary of the last H hours only, with N entries per list
   cowrie-stats sessions [N]      list the N most recent logged-in sessions (default 20)
+  cowrie-stats sessions --files [N]
+                                 only sessions that downloaded or uploaded a file
   cowrie-stats replay [#|ID]     replay a session like a video (asks which one if omitted)
   cowrie-stats show <#|ID>       print one session's commands and files as text
-  cowrie-stats downloads         list captured files with SHA-256 and source URLs
+  cowrie-stats files             captured files: how they arrived, SHA-256, sessions to replay
 
 # is the number shown by "sessions" (1 = newest); ID is Cowrie's session id.
 Extra arguments after "replay #" are passed to playlog.
@@ -33,7 +35,7 @@ EOF
 die() { printf 'cowrie-stats: %s\n' "$*" >&2; exit 1; }
 
 case "${1:-summary}" in
-  summary|sessions|replay|show|downloads) ;;
+  summary|sessions|replay|show|files|downloads) ;;
   -h|--help|help) usage; exit 0 ;;
   *) usage >&2; exit 2 ;;
 esac
@@ -62,6 +64,7 @@ load_events() {
   [ "$LOADED" = 1 ] && return 0
   find "$LOG_DIR" -maxdepth 1 -type f -name 'cowrie.json*' -print0 \
     | xargs -0 -r zcat -f -- \
+    | LC_ALL=C grep -E '"eventid": ?"cowrie\.(session\.(connect|closed|file_download|file_upload)|login\.(success|failed)|command\.input|log\.closed|client\.version)"' \
     | jq -cR --arg since "$SINCE" 'fromjson? | select(type == "object" and (.eventid | type) == "string")
         | select($since == "" or ((.timestamp // "") >= $since))
         | select(.eventid | test("^cowrie\\.(session\\.(connect|closed|file_download|file_upload)|login\\.(success|failed)|command\\.input|log\\.closed|client\\.version)$"))' \
@@ -113,8 +116,8 @@ summary() {
         ["Failed logins",     "cowrie.login.failed"],
         ["Successful logins", "cowrie.login.success"],
         ["Commands run",      "cowrie.command.input"],
-        ["Files downloaded",  "cowrie.session.file_download"],
-        ["Files uploaded",    "cowrie.session.file_upload"] ]
+        ["Files fetched by attacker commands", "cowrie.session.file_download"],
+        ["Files pushed by attackers (SCP/SFTP)", "cowrie.session.file_upload"] ]
     | .[] | "  \(.[0]): \($c[.[1]] // 0)"' "$EV"
   printf '  Unique source IPs: %s\n' "$ips"
 
@@ -129,7 +132,7 @@ summary() {
   top_list "Top SSH client versions" 'select(.eventid == "cowrie.client.version") | .version // "?" | clean | trunc(80)'
   top_list "Top download URLs" 'select(.eventid == "cowrie.session.file_download") | .url // "?" | clean | trunc(110)'
 
-  printf '\nMore: cowrie-stats sessions | replay [#] | show <#> | downloads | --help\n'
+  printf '\nMore: cowrie-stats sessions | replay [#] | show <#> | files | --help\n'
 }
 
 # One TSV row per logged-in session, newest first:
@@ -164,12 +167,21 @@ session_rows() {
 }
 
 list_sessions() {
-  local limit="${1:-20}" rows
+  local only_files=0 rows
+  if [ "${1:-}" = "--files" ]; then only_files=1; shift; fi
+  local limit="${1:-20}"
   case "$limit" in ''|*[!0-9]*) die "session count must be a number" ;; esac
   rows="$(session_rows)"
   if [ -z "$rows" ]; then
     echo "No logged-in sessions yet."
     return 1
+  fi
+  if [ "$only_files" = 1 ]; then
+    rows="$(printf '%s\n' "$rows" | awk -F'\t' '$7 > 0')"
+    if [ -z "$rows" ]; then
+      echo "No logged-in sessions with files yet."
+      return 1
+    fi
   fi
   { printf '%s\n' "$rows" | head -n "$limit" | awk -F'\t' '
       BEGIN { f = "%4s  %-19s  %-6s  %-15s  %-28s  %4s  %5s  %6s  %s\n"
@@ -181,9 +193,9 @@ find_session() { # number (1-6 digits) or session id -> TSV row
   local rows
   rows="$(session_rows)"
   if [[ "$1" =~ ^[0-9]{1,6}$ ]]; then
-    printf '%s\n' "$rows" | awk -F'\t' -v n="$1" '$1 == n { print; exit }'
+    printf '%s\n' "$rows" | awk -F'\t' -v n="$1" '$1 == n { print }'
   else
-    printf '%s\n' "$rows" | awk -F'\t' -v id="$1" '$10 == id { print; exit }'
+    printf '%s\n' "$rows" | awk -F'\t' -v id="$1" '$10 == id { print }'
   fi
 }
 
@@ -207,7 +219,7 @@ show_session() {
     | if .eventid == "cowrie.command.input" then
         "  \(.timestamp[11:19])  $ \(.input // "" | clean)"
       elif (.eventid | test("^cowrie\\.session\\.file_")) then
-        "  \(.timestamp[11:19])  [file] \(.shasum // "?")  \(.url // .filename // "" | clean)"
+        "  \(.timestamp[11:19])  [\(if .eventid | test("upload") then "file pushed" else "file fetched" end)] \(.shasum // "?")  \(.url // .filename // "" | clean)"
       else empty end' "$EV"
 }
 
@@ -240,26 +252,38 @@ replay() {
   fi
 }
 
-downloads() {
+# Each captured file, newest first, with the sessions that delivered it. A file is
+# "fetched" when an attacker's command made the honeypot download it, and "pushed"
+# when the attacker sent it directly. Both are stored the same way, by SHA-256.
+list_files() {
   local out
   load_events
   out="$(jq -rn "$DEFS"'
+    def when: .[5:19] | sub("T"; " ");
     [inputs | select((.eventid | test("^cowrie\\.session\\.file_")) and .shasum)]
     | group_by(.shasum)
-    | map({sha: .[0].shasum, n: length, first: (map(.timestamp) | min),
-           out: (.[0].outfile // "?"), srcs: (map(.url // .filename // "upload") | unique)})
+    | map({sha: .[0].shasum, first: (map(.timestamp) | min), out: (.[0].outfile // "?" | if contains("/") then . else "var/lib/cowrie/downloads/" + . end),
+           seen: (unique_by([.session, .eventid]) | sort_by(.timestamp) | reverse)})
     | sort_by(.first) | reverse | .[]
-    | "\(.first[0:19] | sub("T"; " "))  seen \(.n)x  sha256 \(.sha)\n    saved: \(.out | clean)\n"
-      + (.srcs[0:3] | map("    from:  " + (clean | trunc(110))) | join("\n")) + "\n"' "$EV")"
-  if [ -z "$out" ]; then echo "No files captured yet."; else printf '%s\n' "$out"; fi
+    | "sha256 \(.sha)\(if .sha | startswith("e3b0c44298fc1c149afbf4c8996fb924") then "  (EMPTY FILE: nothing to analyze)" else "" end)\n"
+      + "  saved: \(.out | clean)\n"
+      + (.seen[0:5] | map("  \(.timestamp | when)  \(if .eventid | test("upload") then "pushed " else "fetched" end)  session \(.session // "?" | clean)  from \(.src_ip // "?" | clean)  \(.url // .filename // "(source not logged)" | clean | trunc(60))") | join("\n"))
+      + (if (.seen | length) > 5 then "\n  ... and \((.seen | length) - 5) more sessions" else "" end) + "\n"' "$EV")"
+  if [ -z "$out" ]; then
+    echo "No files captured yet."
+  else
+    printf '%s\n' "$out"
+    echo "fetched = an attacker's command made the honeypot download it; pushed = sent directly (SCP/SFTP)."
+    echo "Watch a session: cowrie-stats replay <session>   Commands as text: cowrie-stats show <session>"
+  fi
 }
 
 cmd="${1:-summary}"
 if [ $# -gt 0 ]; then shift; fi
 case "$cmd" in
   summary)        summary "$@" ;;
-  sessions)       list_sessions "${1:-20}" ;;
+  sessions)       list_sessions "$@" ;;
   replay)         replay "$@" ;;
   show)           show_session "${1:-}" ;;
-  downloads)      downloads ;;
+  files|downloads) list_files ;;
 esac

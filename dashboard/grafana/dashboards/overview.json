@@ -781,8 +781,8 @@
   {
    "id": 15,
    "type": "table",
-   "title": "Captured files",
-   "description": "Metadata only: the files themselves stay on the Pi.",
+   "title": "Captured files: click a session to see how each arrived",
+   "description": "fetched: an attacker's command made the honeypot download it. pushed: sent directly (SCP/SFTP). The files stay on the Pi.",
    "gridPos": {
     "x": 0,
     "y": 18,
@@ -816,31 +816,45 @@
      {
       "matcher": {
        "id": "byName",
-       "options": "times"
+       "options": "session"
       },
       "properties": [
        {
-        "id": "custom.cellOptions",
-        "value": {
-         "type": "gauge",
-         "mode": "basic",
-         "valueDisplayMode": "text"
-        }
-       },
-       {
-        "id": "color",
-        "value": {
-         "mode": "fixed",
-         "fixedColor": "#f2495c"
-        }
+        "id": "links",
+        "value": [
+         {
+          "title": "Open session",
+          "url": "/d/honeypot-session/session?var-session=${__value.raw}&from=now-90d&to=now"
+         }
+        ]
        },
        {
         "id": "custom.width",
-        "value": 120
-       },
+        "value": 130
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "how"
+      },
+      "properties": [
        {
-        "id": "decimals",
-        "value": 0
+        "id": "custom.width",
+        "value": 80
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "src_ip"
+      },
+      "properties": [
+       {
+        "id": "custom.width",
+        "value": 140
        }
       ]
      },
@@ -877,7 +891,7 @@
       "uid": "honeypot-pg"
      },
      "rawQuery": true,
-     "rawSql": "SELECT min(ts) AS first_seen, shasum AS sha256, count(*) AS times, max(coalesce(url, filename)) AS source FROM events WHERE eventid IN ('cowrie.session.file_download','cowrie.session.file_upload') AND shasum IS NOT NULL AND $__timeFilter(ts) GROUP BY 2 ORDER BY 1 DESC LIMIT 50",
+     "rawSql": "SELECT min(ts) AS first_seen, session, CASE WHEN eventid LIKE '%upload' THEN 'pushed' ELSE 'fetched' END AS how, src_ip, CASE WHEN shasum LIKE 'e3b0c44298fc1c149afbf4c8996fb924%' THEN 'empty file' ELSE coalesce(url, filename, 'not logged') END AS source, shasum AS sha256 FROM events WHERE eventid IN ('cowrie.session.file_download','cowrie.session.file_upload') AND shasum IS NOT NULL AND $__timeFilter(ts) GROUP BY session, eventid, src_ip, shasum, url, filename ORDER BY 1 DESC LIMIT 50",
      "format": "table",
      "editorMode": "code"
     }
