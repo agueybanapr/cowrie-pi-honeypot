@@ -20,6 +20,8 @@ Usage:
   cowrie-stats                   summary: totals, top IPs, credentials, commands, files
   cowrie-stats summary [--hours H] [--top N]
                                  summary of the last H hours only, with N entries per list
+  cowrie-stats report [--hours H] [--top N]
+                                 short phone-friendly report, used for notifications
   cowrie-stats sessions [N]      list the N most recent logged-in sessions (default 20)
   cowrie-stats sessions --files [N]
                                  only sessions that downloaded or uploaded a file
@@ -35,7 +37,7 @@ EOF
 die() { printf 'cowrie-stats: %s\n' "$*" >&2; exit 1; }
 
 case "${1:-summary}" in
-  summary|sessions|replay|show|files|downloads) ;;
+  summary|report|sessions|replay|show|files|downloads) ;;
   -h|--help|help) usage; exit 0 ;;
   *) usage >&2; exit 2 ;;
 esac
@@ -133,6 +135,58 @@ summary() {
   top_list "Top download URLs" 'select(.eventid == "cowrie.session.file_download") | .url // "?" | clean | trunc(110)'
 
   printf '\nMore: cowrie-stats sessions | replay [#] | show <#> | files | --help\n'
+}
+
+# Phone-friendly report for notifications. The first line is the headline; the rest is
+# plain text. It is not Markdown, so attacker-written text cannot become links.
+report() {
+  local hours=24
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --hours) hours="${2:-}"; shift 2 || die "--hours needs a number" ;;
+      --top)   TOP="${2:-}";   shift 2 || die "--top needs a number" ;;
+      *) die "unknown report option: $1" ;;
+    esac
+  done
+  case "$TOP" in ''|0|*[!0-9]*) die "--top must be a positive number" ;; esac
+  case "$hours" in ''|0|*[!0-9]*) die "--hours must be a positive number" ;; esac
+  SINCE="$(date -d "-$hours hours" +%Y-%m-%dT%H:%M:%S)"
+  load_events
+  jq -rn --argjson top "$TOP" --argjson hours "$hours" "$DEFS"'
+    def commas: tostring | gsub("(?<d>[0-9])(?=([0-9]{3})+$)"; "\(.d),");
+    def plural($n; $word): "\($n | commas) \($word)\(if $n == 1 then "" else "s" end)";
+    def ranked: group_by(.) | map({v: .[0], c: length}) | sort_by(-.c) | .[0:$top]
+      | if length == 0 then ["   none"] else map("   \(.c | commas)  \(.v)") end;
+    def only($id): map(select(.eventid == $id));
+    [inputs] as $e
+    | ($e | only("cowrie.session.connect")) as $conn
+    | ($e | only("cowrie.command.input")) as $cmds
+    | ($e | map(select(.eventid | test("^cowrie\\.login\\.")))) as $logins
+    | ($conn | map(.src_ip) | unique | length) as $ips
+    | ($e | map(select((.eventid | test("^cowrie\\.session\\.file_")) and .shasum
+                       and (.shasum | startswith("e3b0c44298fc1c149afbf4c8996fb924") | not)))
+        | unique_by(.shasum) | sort_by(.timestamp) | reverse) as $files
+    | "Honeypot: \(plural($conn | length; "connection")), \(plural($ips; "IP")), \(plural($files | length; "file"))",
+      "Last \($hours) hours",
+      "",
+      "🔌 Connections: \($conn | length | commas) from \($ips | commas) IPs",
+      "🔑 Logins: \($logins | only("cowrie.login.success") | length | commas) accepted, \($logins | only("cowrie.login.failed") | length | commas) rejected",
+      "⌨️ Commands: \($cmds | length | commas)",
+      "📦 Files captured: \($files | length | commas)",
+      "",
+      "🌍 Top source IPs",
+      ($conn | map(.src_ip // "?" | clean) | ranked)[],
+      "",
+      "🔐 Top logins tried",
+      ($logins | map("\(.username // "" | clean):\(.password // "" | clean)" | trunc(40)) | ranked)[],
+      "",
+      "💻 Top commands",
+      ($cmds | map(.input // "" | clean | trunc(50)) | ranked)[],
+      (if ($files | length) > 0 then
+         "",
+         "🚩 Files",
+         ($files[0:$top][] | "   \(.shasum[0:12])  \(.url // .filename // "source not logged" | clean | trunc(40))")
+       else empty end)' "$EV"
 }
 
 # One TSV row per logged-in session, newest first:
@@ -282,6 +336,7 @@ cmd="${1:-summary}"
 if [ $# -gt 0 ]; then shift; fi
 case "$cmd" in
   summary)        summary "$@" ;;
+  report)         report "$@" ;;
   sessions)       list_sessions "$@" ;;
   replay)         replay "$@" ;;
   show)           show_session "${1:-}" ;;

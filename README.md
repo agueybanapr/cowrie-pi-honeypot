@@ -145,6 +145,7 @@ timer), then `sudo systemctl daemon-reload`.
 | `cowrie-stats sessions [N]` | Numbered list of logged-in sessions, newest first, in local time |
 | `cowrie-stats replay [#\|ID]` | Replays a session like a video with `playlog` (asks which if omitted) |
 | `cowrie-stats show <#\|ID>` | One session's commands and files as text |
+| `cowrie-stats report` | The short report sent to your phone |
 | `cowrie-stats files` | Captured files: how each arrived, SHA-256, saved path, and the sessions to replay |
 | `cowrie-stats sessions --files [N]` | Only sessions that fetched or pushed a file |
 
@@ -156,8 +157,8 @@ Extra arguments after `replay #` are passed to `playlog`.
 
 ### cowrie-report
 
-Runs `cowrie-stats summary` for the last `REPORT_HOURS` (default 24) and posts it
-to ntfy. Settings come from `/etc/cowrie-report.env`:
+Runs `cowrie-stats report` for the last `REPORT_HOURS` (default 24) and posts it to
+ntfy with an **Open dashboard** button, at higher priority when files were captured. Settings come from `/etc/cowrie-report.env`:
 
 | Variable | Meaning |
 |---|---|
@@ -165,6 +166,7 @@ to ntfy. Settings come from `/etc/cowrie-report.env`:
 | `NTFY_TOKEN` | Access token for protected topics or self-hosted servers (optional) |
 | `REPORT_HOURS` | Period covered, default 24 |
 | `REPORT_TOP` | Entries per top list, default 5 |
+| `REPORT_DASHBOARD_URL` | Address for the button, default `https://honeypot.lan` |
 
 Sends a high-priority alert instead if the `cowrie` service is not running. The
 token goes to curl on stdin, never on its command line. Bodies are trimmed to
