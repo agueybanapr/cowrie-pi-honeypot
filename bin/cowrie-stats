@@ -74,7 +74,7 @@ load_events() {
 
 top_list() { # title, jq filter producing one string per event
   printf '\n== %s\n' "$1"
-  { jq -r "$DEFS $2" "$EV" | sort | uniq -c | sort -rn | head -n "$TOP" \
+  { jq -r "$DEFS $2" "$EV" | sort | uniq -c | sort -rn | awk -v n="$TOP" 'NR <= n' \
       | awk '{ print } END { if (NR == 0) print "      (none)" }'; } || true
 }
 
@@ -102,7 +102,7 @@ summary() {
     return 0
   fi
   local first last ips
-  first="$(jq -r '.timestamp // empty' "$EV" | sort | head -n 1)" || true
+  first="$(jq -r '.timestamp // empty' "$EV" | sort | awk 'NR == 1')" || true
   last="$(jq -r '.timestamp // empty' "$EV" | sort | tail -n 1)" || true
   ips="$(jq -r 'select(.eventid == "cowrie.session.connect") | .src_ip // empty' "$EV" | sort -u | wc -l)"
 
@@ -183,7 +183,7 @@ list_sessions() {
       return 1
     fi
   fi
-  { printf '%s\n' "$rows" | head -n "$limit" | awk -F'\t' '
+  { printf '%s\n' "$rows" | awk -v n="$limit" 'NR <= n' | awk -F'\t' '
       BEGIN { f = "%4s  %-19s  %-6s  %-15s  %-28s  %4s  %5s  %6s  %s\n"
               printf f, "#", "START (local)", "PROTO", "SOURCE IP", "USER:PASS", "CMDS", "FILES", "TIME", "REPLAY" }
       { printf f, $1, $2, $3, $4, $5, $6, $7, $8, $9 }'; } || true
