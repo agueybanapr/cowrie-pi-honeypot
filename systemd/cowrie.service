@@ -1,0 +1,15 @@
+[Unit]
+Description=Cowrie SSH/Telnet honeypot
+After=network-online.target
+Wants=network-online.target
+[Service]
+User=cowrie
+Group=cowrie
+WorkingDirectory=/home/cowrie/cowrie
+ExecStart=/home/cowrie/cowrie/cowrie-env/bin/twistd -n --umask=0022 --pidfile= --logger cowrie.python.logfile.logger cowrie
+Restart=on-failure
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+[Install]
+WantedBy=multi-user.target

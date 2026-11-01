@@ -1,0 +1,16 @@
+# Secrets: ntfy topic/token live only on the Pi in /etc/cowrie-report.env
+*.env
+*.env.bak.*
+
+# Never commit Cowrie data: logs, session recordings, captured malware
+var/
+*.json
+*.json.*
+tty/
+downloads/
+*.ttylog
+
+# Local clutter
+*.swp
+*~
+.DS_Store

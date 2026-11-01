@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# cowrie-report - send a summary of recent Cowrie activity to an ntfy topic.
+#
+# Settings come from the environment (systemd loads /etc/cowrie-report.env):
+#   NTFY_URL       full topic URL, e.g. https://ntfy.sh/cowrie-1a2b3c...   (required)
+#   NTFY_TOKEN     access token for protected topics or self-hosted servers  (optional)
+#   REPORT_HOURS   period covered by the report, default 24
+#   REPORT_TOP     entries per top list, default 5
+#
+# The token is passed to curl on stdin, never on its command line.
+
+set -euo pipefail
+
+: "${NTFY_URL:?NTFY_URL is not set (see /etc/cowrie-report.env)}"
+HOURS="${REPORT_HOURS:-24}"
+TOP="${REPORT_TOP:-5}"
+STATS="${COWRIE_STATS:-/usr/local/bin/cowrie-stats}"
+MAX_BYTES=3900   # ntfy's message limit is 4096 bytes; longer bodies become attachments
+
+WORK="$(mktemp -d)"
+trap 'rm -rf "$WORK"' EXIT
+BODY="$WORK/body.txt"
+
+title="Cowrie daily report ($(hostname))"
+priority=3
+tags="honey_pot"
+
+if [ "$(systemctl is-active cowrie 2>/dev/null || true)" != "active" ]; then
+  title="Cowrie is NOT running on $(hostname)"
+  priority=5
+  tags="warning,honey_pot"
+  printf 'The cowrie service is not active. Check: systemctl status cowrie\n\n' > "$BODY"
+fi
+
+if out="$("$STATS" summary --hours "$HOURS" --top "$TOP" 2>&1)"; then
+  printf '%s\n' "$out" | grep -v '^More: ' >> "$BODY" || true
+else
+  priority=4
+  printf 'cowrie-stats failed:\n%s\n' "$out" >> "$BODY"
+fi
+
+if [ "$(LC_ALL=C wc -c < "$BODY")" -gt "$MAX_BYTES" ]; then
+  # Cut at a byte limit, then drop the partial last line (keeps UTF-8 intact).
+  head -c "$MAX_BYTES" "$BODY" | sed '$d' > "$WORK/cut.txt"
+  printf '\n... (truncated; run cowrie-stats on the Pi for the full report)\n' >> "$WORK/cut.txt"
+  mv "$WORK/cut.txt" "$BODY"
+fi
+
+{
+  if [ -n "${NTFY_TOKEN:-}" ]; then
+    printf 'header = "Authorization: Bearer %s"\n' "$NTFY_TOKEN"
+  fi
+} | curl -fsS --max-time 30 --retry 3 -o /dev/null -K - \
+      -H "Title: $title" -H "Priority: $priority" -H "Tags: $tags" \
+      --data-binary @"$BODY" "$NTFY_URL"
