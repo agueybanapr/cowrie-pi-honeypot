@@ -781,8 +781,8 @@
   {
    "id": 15,
    "type": "table",
-   "title": "Captured files: click a session to see how each arrived",
-   "description": "fetched: an attacker's command made the honeypot download it. pushed: sent directly (SCP/SFTP). The files stay on the Pi.",
+   "title": "Captured files: click a sha256 to read it or a session for details",
+   "description": "Click a sha256 to read scripts and look files up. fetched: an attacker's command made the honeypot download it. pushed: sent directly (SCP/SFTP). The files stay on the Pi.",
    "gridPos": {
     "x": 0,
     "y": 18,
@@ -864,6 +864,15 @@
        "options": "sha256"
       },
       "properties": [
+       {
+        "id": "links",
+        "value": [
+         {
+          "title": "Read file and look it up",
+          "url": "/d/honeypot-sample/sample?var-sample=${__value.raw}&from=now-90d&to=now"
+         }
+        ]
+       },
        {
         "id": "custom.width",
         "value": 480

@@ -9,6 +9,7 @@ import maxminddb
 import psycopg
 
 LOG_DIR = Path("/logs")
+SAMPLE_DIR = Path("/samples")
 GEOIP = Path("/geoip/dbip-city-lite.mmdb")
 # Cowrie follows the Pi's timezone but still appends "Z", so stamps are local time.
 LOG_TZ = ZoneInfo(os.environ.get("COWRIE_LOG_TZ", "America/New_York"))
@@ -61,6 +62,25 @@ def locate(reader, ip):
             location.get("latitude"), location.get("longitude"))
 
 
+def load_samples(cur):
+    """Store verified text samples for display. Control characters become '?'."""
+    cur.execute("""CREATE TABLE IF NOT EXISTS samples (
+        sha256 text PRIMARY KEY, bytes integer NOT NULL, content text NOT NULL)""")
+    cur.execute("GRANT SELECT ON samples TO grafana_ro")
+    added = 0
+    if not SAMPLE_DIR.is_dir():
+        return added
+    for path in SAMPLE_DIR.iterdir():
+        if not re.fullmatch(r"[0-9a-f]{64}", path.name):
+            continue
+        data = path.read_bytes()
+        content = re.sub(r"[\x00-\x08\x0b-\x1f\x7f]", "?", data.decode("utf-8", "replace"))
+        cur.execute("INSERT INTO samples VALUES (%s,%s,%s) ON CONFLICT (sha256) DO NOTHING",
+                    (path.name, len(data), content))
+        added += cur.rowcount
+    return added
+
+
 def main():
     dsn = f"host=db dbname=honeypot user=honeypot password={os.environ['DB_PASSWORD']}"
     added = bad = 0
@@ -94,9 +114,10 @@ def main():
         if ips:
             cur.executemany("INSERT INTO ip_geo VALUES (%s,%s,%s,%s,%s,%s) ON CONFLICT DO NOTHING",
                             [locate(reader, ip) for ip in ips])
+        new_samples = load_samples(cur)
         cur.execute("SELECT count(*) FROM events")
         total = cur.fetchone()[0]
-    print(f"processed {added} lines, skipped {bad} malformed, {len(ips)} new IPs, {total} events in database"
+    print(f"processed {added} lines, skipped {bad} malformed, {len(ips)} new IPs, {new_samples} new samples, {total} events in database"
           + ("" if reader else " (no GeoIP database)"))
 
 

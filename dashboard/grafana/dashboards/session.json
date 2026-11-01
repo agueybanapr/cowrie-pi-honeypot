@@ -13,7 +13,7 @@
  "panels": [
   {
    "id": 100,
-   "type": "stat",
+   "type": "table",
    "title": "Session",
    "description": "",
    "gridPos": {
@@ -24,39 +24,95 @@
    },
    "fieldConfig": {
     "defaults": {
-     "noValue": "-"
+     "custom": {
+      "align": "auto",
+      "filterable": false
+     }
     },
     "overrides": [
      {
       "matcher": {
        "id": "byName",
-       "options": "Started"
+       "options": "started"
       },
       "properties": [
        {
         "id": "unit",
-        "value": "time: YYYY-MM-DD HH:mm:ss"
+        "value": "time: MM-DD HH:mm:ss"
+       },
+       {
+        "id": "custom.width",
+        "value": 150
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "src_ip"
+      },
+      "properties": [
+       {
+        "id": "custom.width",
+        "value": 150
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "protocol"
+      },
+      "properties": [
+       {
+        "id": "custom.width",
+        "value": 90
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "commands"
+      },
+      "properties": [
+       {
+        "id": "custom.width",
+        "value": 100
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "files"
+      },
+      "properties": [
+       {
+        "id": "custom.width",
+        "value": 70
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "seconds"
+      },
+      "properties": [
+       {
+        "id": "custom.width",
+        "value": 80
        }
       ]
      }
     ]
    },
    "options": {
-    "reduceOptions": {
-     "calcs": [
-      "lastNotNull"
-     ],
-     "fields": "/.*/",
-     "values": true
-    },
-    "colorMode": "none",
-    "graphMode": "none",
-    "textMode": "value_and_name",
-    "justifyMode": "auto",
-    "orientation": "vertical",
-    "text": {
-     "titleSize": 13,
-     "valueSize": 18
+    "showHeader": true,
+    "cellHeight": "sm",
+    "footer": {
+     "show": false
     }
    },
    "datasource": {
@@ -71,7 +127,7 @@
       "uid": "honeypot-pg"
      },
      "rawQuery": true,
-     "rawSql": "SELECT s.src_ip AS \"Source IP\", coalesce(g.country, 'Unknown') AS \"Country\", coalesce(g.city, 'Unknown') AS \"City\", s.protocol AS \"Protocol\", s.started AS \"Started\", CASE WHEN s.logged_in THEN coalesce(s.username, '') || ':' || coalesce(s.password, '') ELSE 'no login' END AS \"Login\", s.commands AS \"Commands\", s.files AS \"Files\", round(s.duration_s::numeric, 1) AS \"Seconds\" FROM sessions s LEFT JOIN ip_geo g ON g.ip = s.src_ip WHERE s.session = ${session:sqlstring}",
+     "rawSql": "SELECT s.started, s.src_ip, coalesce(g.country, 'Unknown') AS country, coalesce(g.city, 'Unknown') AS city, s.protocol, CASE WHEN s.logged_in THEN coalesce(s.username, '') || ':' || coalesce(s.password, '') ELSE 'no login' END AS login, s.commands, s.files, round(s.duration_s::numeric, 1) AS seconds FROM sessions s LEFT JOIN ip_geo g ON g.ip = s.src_ip WHERE s.session = ${session:sqlstring}",
      "format": "table",
      "editorMode": "code"
     }
@@ -183,8 +239,17 @@
       },
       "properties": [
        {
+        "id": "links",
+        "value": [
+         {
+          "title": "Read file and look it up",
+          "url": "/d/honeypot-sample/sample?var-sample=${__value.raw}&from=now-90d&to=now"
+         }
+        ]
+       },
+       {
         "id": "custom.width",
-        "value": 300
+        "value": 540
        }
       ]
      }

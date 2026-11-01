@@ -1,0 +1,219 @@
+{
+ "uid": "honeypot-sample",
+ "title": "Sample",
+ "schemaVersion": 39,
+ "version": 1,
+ "editable": false,
+ "timezone": "",
+ "refresh": "5m",
+ "time": {
+  "from": "now-90d",
+  "to": "now"
+ },
+ "panels": [
+  {
+   "id": 200,
+   "type": "text",
+   "title": "Look up this hash",
+   "description": "",
+   "gridPos": {
+    "x": 0,
+    "y": 0,
+    "w": 24,
+    "h": 3
+   },
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "options": {
+    "mode": "markdown",
+    "content": "**[Look up on VirusTotal](https://www.virustotal.com/gui/file/$sample)** &nbsp;&nbsp;|&nbsp;&nbsp; **[Look up on MalwareBazaar](https://bazaar.abuse.ch/browse.php?search=sha256%3A$sample)**\n\nThese send only the hash, and only when clicked. No file is uploaded."
+   }
+  },
+  {
+   "id": 202,
+   "type": "table",
+   "title": "Delivered by",
+   "description": "",
+   "gridPos": {
+    "x": 0,
+    "y": 3,
+    "w": 24,
+    "h": 5
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "align": "auto",
+      "filterable": false
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "first_seen"
+      },
+      "properties": [
+       {
+        "id": "unit",
+        "value": "time: MM-DD HH:mm:ss"
+       },
+       {
+        "id": "custom.width",
+        "value": 150
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "session"
+      },
+      "properties": [
+       {
+        "id": "links",
+        "value": [
+         {
+          "title": "Open session",
+          "url": "/d/honeypot-session/session?var-session=${__value.raw}&from=now-90d&to=now"
+         }
+        ]
+       },
+       {
+        "id": "custom.width",
+        "value": 130
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "how"
+      },
+      "properties": [
+       {
+        "id": "custom.width",
+        "value": 80
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "src_ip"
+      },
+      "properties": [
+       {
+        "id": "custom.width",
+        "value": 140
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm",
+    "footer": {
+     "show": false
+    }
+   },
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "honeypot-pg"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "honeypot-pg"
+     },
+     "rawQuery": true,
+     "rawSql": "SELECT min(ts) AS first_seen, session, CASE WHEN eventid LIKE '%upload' THEN 'pushed' ELSE 'fetched' END AS how, src_ip, coalesce(url, filename, 'not logged') AS source FROM events WHERE shasum = ${sample:sqlstring} AND eventid IN ('cowrie.session.file_download','cowrie.session.file_upload') GROUP BY session, eventid, src_ip, url, filename ORDER BY 1 DESC",
+     "format": "table",
+     "editorMode": "code"
+    }
+   ]
+  },
+  {
+   "id": 201,
+   "type": "logs",
+   "title": "File contents: read only, never run this",
+   "description": "Empty means the file is a binary or too large, or is empty. Those stay on the Pi. Attacker text: treat it as hostile.",
+   "gridPos": {
+    "x": 0,
+    "y": 8,
+    "w": 24,
+    "h": 28
+   },
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "options": {
+    "showTime": false,
+    "showLabels": false,
+    "showCommonLabels": false,
+    "wrapLogMessage": true,
+    "prettifyLogMessage": false,
+    "enableLogDetails": false,
+    "dedupStrategy": "none",
+    "sortOrder": "Ascending"
+   },
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "honeypot-pg"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "honeypot-pg"
+     },
+     "rawQuery": true,
+     "rawSql": "SELECT to_timestamp(t.line_number) AS time, CASE WHEN t.line_text = '' THEN ' ' ELSE t.line_text END AS text FROM samples s, regexp_split_to_table(s.content, E'\\n') WITH ORDINALITY AS t(line_text, line_number) WHERE s.sha256 = ${sample:sqlstring} ORDER BY t.line_number",
+     "format": "table",
+     "editorMode": "code"
+    }
+   ]
+  }
+ ],
+ "tags": [
+  "honeypot"
+ ],
+ "graphTooltip": 1,
+ "templating": {
+  "list": [
+   {
+    "name": "sample",
+    "label": "File (SHA-256)",
+    "type": "query",
+    "datasource": {
+     "type": "grafana-postgresql-datasource",
+     "uid": "honeypot-pg"
+    },
+    "refresh": 1,
+    "sort": 0,
+    "query": "SELECT shasum FROM events WHERE eventid IN ('cowrie.session.file_download','cowrie.session.file_upload') AND shasum IS NOT NULL GROUP BY shasum ORDER BY max(ts) DESC LIMIT 500",
+    "definition": "captured files, newest first",
+    "includeAll": false,
+    "multi": false
+   }
+  ]
+ },
+ "annotations": {
+  "list": []
+ },
+ "timepicker": {
+  "refresh_intervals": [
+   "1m",
+   "5m",
+   "15m",
+   "1h"
+  ]
+ }
+}

@@ -14,7 +14,7 @@ if [ ! -f .env ]; then
   echo "Created .env; check PI_HOST and PI_USER in it."
 fi
 # Containers run as other users, so mounted files must be world-readable (.env stays private).
-mkdir -p data/logs data/geoip
+mkdir -p data/logs data/geoip data/samples
 chmod -R a+rX db grafana ingest data
 [ -f data/geoip/dbip-city-lite.mmdb ] || ./fetch-geoip.sh
 docker compose up -d --wait db grafana

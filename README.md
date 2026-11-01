@@ -181,8 +181,10 @@ topic), writes `cowrie-report.service` (runs as `cowrie`, sandboxed) and
 
 Optional dashboard that runs on your own computer in Docker: totals, graphs over
 time, an attack map, top lists and session drill-down. Your computer pulls logs
-from the Pi over SSH, and the Pi never connects back. Malware samples and terminal
-recordings stay on the Pi.
+from the Pi over SSH, and the Pi never connects back. Captured text files (scripts up
+to 256 KiB) are copied too, so they can be read on the Sample page; they are verified by
+hash, stored as text, and never run. Binaries and terminal recordings stay on the Pi.
+The page's VirusTotal and MalwareBazaar buttons send only the hash, and only when clicked.
 
 ```
 Pi: cowrie.json --(SSH, restricted key)--> pull_logs.py --> ingest --> Postgres --> Grafana

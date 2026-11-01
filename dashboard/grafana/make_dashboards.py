@@ -9,6 +9,7 @@ from pathlib import Path
 OUT = Path(__file__).resolve().parent / "dashboards"
 DS = {"type": "grafana-postgresql-datasource", "uid": "honeypot-pg"}
 SESSION_URL = "/d/honeypot-session/session?var-session=${__value.raw}&from=now-90d&to=now"
+SAMPLE_URL = "/d/honeypot-sample/sample?var-sample=${__value.raw}&from=now-90d&to=now"
 CONNECT = "eventid='cowrie.session.connect'"
 LOGIN_OK = "eventid='cowrie.login.success'"
 LOGIN_BAD = "eventid='cowrie.login.failed'"
@@ -195,7 +196,7 @@ overview = [
          {"login.success": GREEN, "login.failed": ORANGE, "command.input": CYAN}),
 
     row("Malware and sessions", 17),
-    table("Captured files: click a session to see how each arrived",
+    table("Captured files: click a sha256 to read it or a session for details",
           "SELECT min(ts) AS first_seen, session, "
           "CASE WHEN eventid LIKE '%upload' THEN 'pushed' ELSE 'fetched' END AS how, src_ip, "
           "CASE WHEN shasum LIKE 'e3b0c44298fc1c149afbf4c8996fb924%' THEN 'empty file' ELSE coalesce(url, filename, 'not logged') END AS source, "
@@ -204,8 +205,8 @@ overview = [
           [stamp("first_seen"),
            column("session", ("links", [{"title": "Open session", "url": SESSION_URL}]), ("custom.width", 130)),
            column("how", ("custom.width", 80)), column("src_ip", ("custom.width", 140)),
-           column("sha256", ("custom.width", 480))],
-          desc="fetched: an attacker's command made the honeypot download it. pushed: sent directly (SCP/SFTP). The files stay on the Pi."),
+           column("sha256", ("links", [{"title": "Read file and look it up", "url": SAMPLE_URL}]), ("custom.width", 480))],
+          desc="Click a sha256 to read scripts and look files up. fetched: an attacker's command made the honeypot download it. pushed: sent directly (SCP/SFTP). The files stay on the Pi."),
     table("Sessions: logged-in first, click an ID for details",
           "SELECT s.started, s.session, s.protocol, s.src_ip, coalesce(g.country, 'Unknown') AS country, s.logged_in, "
           "s.username, s.password, s.commands, s.files, round(s.duration_s::numeric, 1) AS seconds "
@@ -265,17 +266,14 @@ Q = "${session:sqlstring}"
 EVENT_COLORS = {"command.input": CYAN, "login.success": GREEN, "login.failed": ORANGE,
                 "session.file_download": RED, "session.file_upload": RED, "session.connect": BLUE,
                 "session.closed": GRAY, "log.closed": GRAY, "client.version": PURPLE}
-facts = panel("stat", "Session",
-              "SELECT s.src_ip AS \"Source IP\", coalesce(g.country, 'Unknown') AS \"Country\", coalesce(g.city, 'Unknown') AS \"City\", "
-              "s.protocol AS \"Protocol\", s.started AS \"Started\", "
-              "CASE WHEN s.logged_in THEN coalesce(s.username, '') || ':' || coalesce(s.password, '') ELSE 'no login' END AS \"Login\", "
-              "s.commands AS \"Commands\", s.files AS \"Files\", round(s.duration_s::numeric, 1) AS \"Seconds\" "
-              f"FROM sessions s LEFT JOIN ip_geo g ON g.ip = s.src_ip WHERE s.session = {Q}", 0, 0, 24, 4)
-facts["options"] = {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "/.*/", "values": True},
-                    "colorMode": "none", "graphMode": "none", "textMode": "value_and_name", "justifyMode": "auto",
-                    "orientation": "vertical", "text": {"titleSize": 13, "valueSize": 18}}
-facts["fieldConfig"]["defaults"] = {"noValue": "-"}
-facts["fieldConfig"]["overrides"] = [column("Started", ("unit", "time: YYYY-MM-DD HH:mm:ss"))]
+facts = table("Session",
+              "SELECT s.started, s.src_ip, coalesce(g.country, 'Unknown') AS country, coalesce(g.city, 'Unknown') AS city, s.protocol, "
+              "CASE WHEN s.logged_in THEN coalesce(s.username, '') || ':' || coalesce(s.password, '') ELSE 'no login' END AS login, "
+              "s.commands, s.files, round(s.duration_s::numeric, 1) AS seconds "
+              f"FROM sessions s LEFT JOIN ip_geo g ON g.ip = s.src_ip WHERE s.session = {Q}", 0, 0, 24, 4,
+              [stamp("started"), column("src_ip", ("custom.width", 150)), column("protocol", ("custom.width", 90)),
+               column("commands", ("custom.width", 100)), column("files", ("custom.width", 70)),
+               column("seconds", ("custom.width", 80))])
 replay = panel("text", "", None, 0, 22, 24, 2)
 replay["options"] = {"mode": "markdown", "content": (
     "Watch this session as a recording on the Pi: `cowrie-stats replay $session`. "
@@ -295,9 +293,41 @@ session = [
            column("event", ("custom.width", 190), ("custom.cellOptions", {"type": "color-text"}),
                   ("mappings", [{"type": "value", "options": {
                       name: {"color": color, "index": i} for i, (name, color) in enumerate(EVENT_COLORS.items())}}])),
-           column("sha256", ("custom.width", 300))]),
+           column("sha256", ("links", [{"title": "Read file and look it up", "url": SAMPLE_URL}]), ("custom.width", 540))]),
     replay,
 ]
+# ------------------------------------------------------------------ sample
+ids = Ids(200)
+S = "${sample:sqlstring}"
+buttons = panel("text", "Look up this hash", None, 0, 0, 24, 3)
+buttons["options"] = {"mode": "markdown", "content": (
+    "**[Look up on VirusTotal](https://www.virustotal.com/gui/file/$sample)** &nbsp;&nbsp;|&nbsp;&nbsp; "
+    "**[Look up on MalwareBazaar](https://bazaar.abuse.ch/browse.php?search=sha256%3A$sample)**\n\n"
+    "These send only the hash, and only when clicked. No file is uploaded.")}
+contents = panel("logs", "File contents: read only, never run this",
+                 "SELECT to_timestamp(t.line_number) AS time, "
+                 "CASE WHEN t.line_text = '' THEN ' ' ELSE t.line_text END AS text FROM samples s, "
+                 "regexp_split_to_table(s.content, E'\\n') WITH ORDINALITY AS t(line_text, line_number) "
+                 f"WHERE s.sha256 = {S} ORDER BY t.line_number", 0, 8, 24, 28,
+                 desc="Empty means the file is a binary or too large, or is empty. Those stay on the Pi. Attacker text: treat it as hostile.")
+contents["options"] = {"showTime": False, "showLabels": False, "showCommonLabels": False, "wrapLogMessage": True,
+                       "prettifyLogMessage": False, "enableLogDetails": False, "dedupStrategy": "none",
+                       "sortOrder": "Ascending"}
+sample = [
+    buttons,
+    table("Delivered by",
+          "SELECT min(ts) AS first_seen, session, CASE WHEN eventid LIKE '%upload' THEN 'pushed' ELSE 'fetched' END AS how, src_ip, "
+          f"coalesce(url, filename, 'not logged') AS source FROM events WHERE shasum = {S} AND {FILES} "
+          "GROUP BY session, eventid, src_ip, url, filename ORDER BY 1 DESC", 0, 3, 24, 5,
+          [stamp("first_seen"),
+           column("session", ("links", [{"title": "Open session", "url": SESSION_URL}]), ("custom.width", 130)),
+           column("how", ("custom.width", 80)), column("src_ip", ("custom.width", 140))]),
+    contents,
+]
+sample_variable = {"name": "sample", "label": "File (SHA-256)", "type": "query", "datasource": DS, "refresh": 1, "sort": 0,
+                   "query": f"SELECT shasum FROM events WHERE {FILES} AND shasum IS NOT NULL GROUP BY shasum ORDER BY max(ts) DESC LIMIT 500",
+                   "definition": "captured files, newest first", "includeAll": False, "multi": False}
+
 variable = {"name": "session", "label": "Session", "type": "query", "datasource": DS, "refresh": 1, "sort": 0,
             "query": "SELECT session FROM sessions ORDER BY started DESC LIMIT 500",
             "definition": "SELECT session FROM sessions ORDER BY started DESC LIMIT 500",
@@ -307,5 +337,8 @@ OUT.mkdir(exist_ok=True)
 (OUT / "overview.json").write_text(json.dumps(dashboard("honeypot-overview", "Honeypot overview", overview), indent=1) + "\n")
 (OUT / "session.json").write_text(json.dumps(dashboard(
     "honeypot-session", "Session", session, templating={"list": [variable]},
+    time={"from": "now-90d", "to": "now"}), indent=1) + "\n")
+(OUT / "sample.json").write_text(json.dumps(dashboard(
+    "honeypot-sample", "Sample", sample, templating={"list": [sample_variable]},
     time={"from": "now-90d", "to": "now"}), indent=1) + "\n")
 print("wrote", sorted(p.name for p in OUT.glob("*.json")))
