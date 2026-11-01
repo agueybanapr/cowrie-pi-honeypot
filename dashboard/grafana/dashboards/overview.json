@@ -4,27 +4,64 @@
  "schemaVersion": 39,
  "version": 1,
  "editable": false,
- "timezone": "browser",
+ "timezone": "",
  "refresh": "5m",
  "time": {
-  "from": "now-7d",
+  "from": "now-24h",
   "to": "now"
  },
  "panels": [
   {
    "id": 1,
-   "type": "stat",
-   "title": "Connections",
-   "description": "",
-   "datasource": {
-    "type": "grafana-postgresql-datasource",
-    "uid": "honeypot-pg"
-   },
+   "type": "row",
+   "title": "Overview",
+   "collapsed": false,
    "gridPos": {
     "x": 0,
     "y": 0,
-    "w": 4,
-    "h": 4
+    "w": 24,
+    "h": 1
+   },
+   "panels": []
+  },
+  {
+   "id": 2,
+   "type": "stat",
+   "title": "Connections",
+   "description": "",
+   "gridPos": {
+    "x": 0,
+    "y": 1,
+    "w": 5,
+    "h": 5
+   },
+   "fieldConfig": {
+    "defaults": {
+     "noValue": "0",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "#5794f2"
+     },
+     "decimals": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "sum"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "area",
+    "textMode": "value",
+    "justifyMode": "auto"
+   },
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "honeypot-pg"
    },
    "targets": [
     {
@@ -34,22 +71,30 @@
       "uid": "honeypot-pg"
      },
      "rawQuery": true,
-     "rawSql": "SELECT count(*) FROM events WHERE eventid='cowrie.session.connect' AND $__timeFilter(ts)",
-     "format": "table",
+     "rawSql": "SELECT $__timeGroup(ts, '1h', 0) AS time, count(*) AS value FROM events WHERE eventid='cowrie.session.connect' AND $__timeFilter(ts) GROUP BY 1 ORDER BY 1",
+     "format": "time_series",
      "editorMode": "code"
     }
-   ],
+   ]
+  },
+  {
+   "id": 3,
+   "type": "stat",
+   "title": "Unique IPs",
+   "description": "",
+   "gridPos": {
+    "x": 5,
+    "y": 1,
+    "w": 4,
+    "h": 3
+   },
    "fieldConfig": {
     "defaults": {
      "noValue": "0",
-     "thresholds": {
-      "mode": "absolute",
-      "steps": [
-       {
-        "color": "blue",
-        "value": null
-       }
-      ]
+     "decimals": 0,
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "#b877d9"
      }
     },
     "overrides": []
@@ -58,26 +103,18 @@
     "reduceOptions": {
      "calcs": [
       "lastNotNull"
-     ]
+     ],
+     "fields": "",
+     "values": false
     },
     "colorMode": "value",
-    "graphMode": "none"
-   }
-  },
-  {
-   "id": 2,
-   "type": "stat",
-   "title": "Unique IPs",
-   "description": "",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "auto"
+   },
    "datasource": {
     "type": "grafana-postgresql-datasource",
     "uid": "honeypot-pg"
-   },
-   "gridPos": {
-    "x": 4,
-    "y": 0,
-    "w": 4,
-    "h": 4
    },
    "targets": [
     {
@@ -91,99 +128,46 @@
      "format": "table",
      "editorMode": "code"
     }
-   ],
-   "fieldConfig": {
-    "defaults": {
-     "noValue": "0",
-     "thresholds": {
-      "mode": "absolute",
-      "steps": [
-       {
-        "color": "blue",
-        "value": null
-       }
-      ]
-     }
-    },
-    "overrides": []
-   },
-   "options": {
-    "reduceOptions": {
-     "calcs": [
-      "lastNotNull"
-     ]
-    },
-    "colorMode": "value",
-    "graphMode": "none"
-   }
-  },
-  {
-   "id": 3,
-   "type": "stat",
-   "title": "Successful logins",
-   "description": "",
-   "datasource": {
-    "type": "grafana-postgresql-datasource",
-    "uid": "honeypot-pg"
-   },
-   "gridPos": {
-    "x": 8,
-    "y": 0,
-    "w": 4,
-    "h": 4
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "datasource": {
-      "type": "grafana-postgresql-datasource",
-      "uid": "honeypot-pg"
-     },
-     "rawQuery": true,
-     "rawSql": "SELECT count(*) FROM events WHERE eventid='cowrie.login.success' AND $__timeFilter(ts)",
-     "format": "table",
-     "editorMode": "code"
-    }
-   ],
-   "fieldConfig": {
-    "defaults": {
-     "noValue": "0",
-     "thresholds": {
-      "mode": "absolute",
-      "steps": [
-       {
-        "color": "blue",
-        "value": null
-       }
-      ]
-     }
-    },
-    "overrides": []
-   },
-   "options": {
-    "reduceOptions": {
-     "calcs": [
-      "lastNotNull"
-     ]
-    },
-    "colorMode": "value",
-    "graphMode": "none"
-   }
+   ]
   },
   {
    "id": 4,
    "type": "stat",
-   "title": "Failed logins",
+   "title": "Successful logins",
    "description": "",
+   "gridPos": {
+    "x": 9,
+    "y": 1,
+    "w": 5,
+    "h": 5
+   },
+   "fieldConfig": {
+    "defaults": {
+     "noValue": "0",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "#73bf69"
+     },
+     "decimals": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "sum"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "area",
+    "textMode": "value",
+    "justifyMode": "auto"
+   },
    "datasource": {
     "type": "grafana-postgresql-datasource",
     "uid": "honeypot-pg"
-   },
-   "gridPos": {
-    "x": 12,
-    "y": 0,
-    "w": 4,
-    "h": 4
    },
    "targets": [
     {
@@ -193,50 +177,50 @@
       "uid": "honeypot-pg"
      },
      "rawQuery": true,
-     "rawSql": "SELECT count(*) FROM events WHERE eventid='cowrie.login.failed' AND $__timeFilter(ts)",
-     "format": "table",
+     "rawSql": "SELECT $__timeGroup(ts, '1h', 0) AS time, count(*) AS value FROM events WHERE eventid='cowrie.login.success' AND $__timeFilter(ts) GROUP BY 1 ORDER BY 1",
+     "format": "time_series",
      "editorMode": "code"
     }
-   ],
-   "fieldConfig": {
-    "defaults": {
-     "noValue": "0",
-     "thresholds": {
-      "mode": "absolute",
-      "steps": [
-       {
-        "color": "blue",
-        "value": null
-       }
-      ]
-     }
-    },
-    "overrides": []
-   },
-   "options": {
-    "reduceOptions": {
-     "calcs": [
-      "lastNotNull"
-     ]
-    },
-    "colorMode": "value",
-    "graphMode": "none"
-   }
+   ]
   },
   {
    "id": 5,
    "type": "stat",
-   "title": "Commands",
+   "title": "Failed logins",
    "description": "",
+   "gridPos": {
+    "x": 14,
+    "y": 1,
+    "w": 5,
+    "h": 5
+   },
+   "fieldConfig": {
+    "defaults": {
+     "noValue": "0",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "#ff9830"
+     },
+     "decimals": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "sum"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "area",
+    "textMode": "value",
+    "justifyMode": "auto"
+   },
    "datasource": {
     "type": "grafana-postgresql-datasource",
     "uid": "honeypot-pg"
-   },
-   "gridPos": {
-    "x": 16,
-    "y": 0,
-    "w": 4,
-    "h": 4
    },
    "targets": [
     {
@@ -246,20 +230,200 @@
       "uid": "honeypot-pg"
      },
      "rawQuery": true,
-     "rawSql": "SELECT count(*) FROM events WHERE eventid='cowrie.command.input' AND $__timeFilter(ts)",
-     "format": "table",
+     "rawSql": "SELECT $__timeGroup(ts, '1h', 0) AS time, count(*) AS value FROM events WHERE eventid='cowrie.login.failed' AND $__timeFilter(ts) GROUP BY 1 ORDER BY 1",
+     "format": "time_series",
      "editorMode": "code"
     }
-   ],
+   ]
+  },
+  {
+   "id": 6,
+   "type": "stat",
+   "title": "Commands run",
+   "description": "",
+   "gridPos": {
+    "x": 19,
+    "y": 1,
+    "w": 5,
+    "h": 5
+   },
    "fieldConfig": {
     "defaults": {
      "noValue": "0",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "#5ad4e6"
+     },
+     "decimals": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "sum"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "area",
+    "textMode": "value",
+    "justifyMode": "auto"
+   },
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "honeypot-pg"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "honeypot-pg"
+     },
+     "rawQuery": true,
+     "rawSql": "SELECT $__timeGroup(ts, '1h', 0) AS time, count(*) AS value FROM events WHERE eventid='cowrie.command.input' AND $__timeFilter(ts) GROUP BY 1 ORDER BY 1",
+     "format": "time_series",
+     "editorMode": "code"
+    }
+   ]
+  },
+  {
+   "id": 7,
+   "type": "stat",
+   "title": "New IPs (24h)",
+   "description": "IPs seen for the first time in the last 24 hours, whatever time range is selected.",
+   "gridPos": {
+    "x": 5,
+    "y": 4,
+    "w": 4,
+    "h": 3
+   },
+   "fieldConfig": {
+    "defaults": {
+     "noValue": "0",
+     "decimals": 0,
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "#b877d9"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "auto"
+   },
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "honeypot-pg"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "honeypot-pg"
+     },
+     "rawQuery": true,
+     "rawSql": "SELECT count(*) FROM (SELECT src_ip FROM events WHERE eventid='cowrie.session.connect' GROUP BY src_ip HAVING min(ts) >= now() - interval '24 hours') t",
+     "format": "table",
+     "editorMode": "code"
+    }
+   ]
+  },
+  {
+   "id": 8,
+   "type": "stat",
+   "title": "Login success rate",
+   "description": "Cowrie accepts most passwords on purpose, so a high rate is normal for a honeypot.",
+   "gridPos": {
+    "x": 0,
+    "y": 6,
+    "w": 5,
+    "h": 3
+   },
+   "fieldConfig": {
+    "defaults": {
+     "noValue": "0",
+     "decimals": 1,
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "#73bf69"
+     },
+     "unit": "percent"
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "auto"
+   },
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "honeypot-pg"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "honeypot-pg"
+     },
+     "rawQuery": true,
+     "rawSql": "SELECT round(100.0 * count(*) FILTER (WHERE eventid='cowrie.login.success') / nullif(count(*), 0), 1) FROM events WHERE (eventid='cowrie.login.success' OR eventid='cowrie.login.failed') AND $__timeFilter(ts)",
+     "format": "table",
+     "editorMode": "code"
+    }
+   ]
+  },
+  {
+   "id": 9,
+   "type": "stat",
+   "title": "Files captured",
+   "description": "Distinct files by SHA-256. Red means there are samples to look at.",
+   "gridPos": {
+    "x": 9,
+    "y": 6,
+    "w": 5,
+    "h": 3
+   },
+   "fieldConfig": {
+    "defaults": {
+     "noValue": "0",
+     "decimals": 0,
+     "color": {
+      "mode": "thresholds"
+     },
      "thresholds": {
       "mode": "absolute",
       "steps": [
        {
-        "color": "blue",
+        "color": "#73bf69",
         "value": null
+       },
+       {
+        "color": "#f2495c",
+        "value": 1
        }
       ]
      }
@@ -270,26 +434,18 @@
     "reduceOptions": {
      "calcs": [
       "lastNotNull"
-     ]
+     ],
+     "fields": "",
+     "values": false
     },
     "colorMode": "value",
-    "graphMode": "none"
-   }
-  },
-  {
-   "id": 6,
-   "type": "stat",
-   "title": "Files captured",
-   "description": "",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "auto"
+   },
    "datasource": {
     "type": "grafana-postgresql-datasource",
     "uid": "honeypot-pg"
-   },
-   "gridPos": {
-    "x": 20,
-    "y": 0,
-    "w": 4,
-    "h": 4
    },
    "targets": [
     {
@@ -303,18 +459,80 @@
      "format": "table",
      "editorMode": "code"
     }
-   ],
+   ]
+  },
+  {
+   "id": 10,
+   "type": "stat",
+   "title": "Last activity",
+   "description": "Newest event pulled from the Pi, whatever time range is selected.",
+   "gridPos": {
+    "x": 14,
+    "y": 6,
+    "w": 5,
+    "h": 3
+   },
+   "fieldConfig": {
+    "defaults": {
+     "noValue": "none yet",
+     "decimals": 0,
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "#5794f2"
+     },
+     "unit": "dateTimeFromNow"
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "auto"
+   },
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "honeypot-pg"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "honeypot-pg"
+     },
+     "rawQuery": true,
+     "rawSql": "SELECT extract(epoch FROM max(ts)) * 1000 AS value FROM events",
+     "format": "table",
+     "editorMode": "code"
+    }
+   ]
+  },
+  {
+   "id": 11,
+   "type": "stat",
+   "title": "Sessions with commands",
+   "description": "",
+   "gridPos": {
+    "x": 19,
+    "y": 6,
+    "w": 5,
+    "h": 3
+   },
    "fieldConfig": {
     "defaults": {
      "noValue": "0",
-     "thresholds": {
-      "mode": "absolute",
-      "steps": [
-       {
-        "color": "blue",
-        "value": null
-       }
-      ]
+     "decimals": 0,
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "#5ad4e6"
      }
     },
     "overrides": []
@@ -323,26 +541,108 @@
     "reduceOptions": {
      "calcs": [
       "lastNotNull"
-     ]
+     ],
+     "fields": "",
+     "values": false
     },
     "colorMode": "value",
-    "graphMode": "none"
-   }
-  },
-  {
-   "id": 7,
-   "type": "timeseries",
-   "title": "Connections over time, by protocol",
-   "description": "",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "auto"
+   },
    "datasource": {
     "type": "grafana-postgresql-datasource",
     "uid": "honeypot-pg"
    },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "honeypot-pg"
+     },
+     "rawQuery": true,
+     "rawSql": "SELECT count(DISTINCT session) FROM events WHERE eventid='cowrie.command.input' AND $__timeFilter(ts)",
+     "format": "table",
+     "editorMode": "code"
+    }
+   ]
+  },
+  {
+   "id": 12,
+   "type": "timeseries",
+   "title": "Connections over time, by protocol",
+   "description": "",
    "gridPos": {
     "x": 0,
-    "y": 4,
+    "y": 9,
     "w": 12,
     "h": 8
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "drawStyle": "bars",
+      "fillOpacity": 80,
+      "lineWidth": 0,
+      "stacking": {
+       "mode": "normal"
+      },
+      "showPoints": "never"
+     },
+     "min": 0,
+     "decimals": 0
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "ssh"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#5794f2"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "telnet"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#ff9830"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "bottom",
+     "showLegend": true,
+     "calcs": [
+      "sum"
+     ]
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "honeypot-pg"
    },
    "targets": [
     {
@@ -357,35 +657,98 @@
      "editorMode": "code"
     }
    ],
+   "interval": "5m"
+  },
+  {
+   "id": 13,
+   "type": "timeseries",
+   "title": "Logins and commands over time",
+   "description": "",
+   "gridPos": {
+    "x": 12,
+    "y": 9,
+    "w": 12,
+    "h": 8
+   },
    "fieldConfig": {
     "defaults": {
      "custom": {
       "drawStyle": "bars",
-      "fillOpacity": 25,
+      "fillOpacity": 80,
+      "lineWidth": 0,
       "stacking": {
        "mode": "normal"
       },
-      "spanNulls": false
-     }
+      "showPoints": "never"
+     },
+     "min": 0,
+     "decimals": 0
     },
-    "overrides": []
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "login.success"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#73bf69"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "login.failed"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#ff9830"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "command.input"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#5ad4e6"
+        }
+       }
+      ]
+     }
+    ]
    },
-   "options": {}
-  },
-  {
-   "id": 8,
-   "type": "timeseries",
-   "title": "Logins and commands over time",
-   "description": "",
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "bottom",
+     "showLegend": true,
+     "calcs": [
+      "sum"
+     ]
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
    "datasource": {
     "type": "grafana-postgresql-datasource",
     "uid": "honeypot-pg"
-   },
-   "gridPos": {
-    "x": 12,
-    "y": 4,
-    "w": 12,
-    "h": 8
    },
    "targets": [
     {
@@ -395,308 +758,116 @@
       "uid": "honeypot-pg"
      },
      "rawQuery": true,
-     "rawSql": "SELECT $__timeGroup(ts, $__interval, 0) AS time, replace(eventid, 'cowrie.', '') AS metric, count(*) AS value FROM events WHERE eventid IN ('cowrie.login.success','cowrie.login.failed','cowrie.command.input') AND $__timeFilter(ts) GROUP BY 1, 2 ORDER BY 1",
+     "rawSql": "SELECT $__timeGroup(ts, $__interval, 0) AS time, replace(eventid, 'cowrie.', '') AS metric, count(*) AS value FROM events WHERE (eventid='cowrie.login.success' OR eventid='cowrie.login.failed' OR eventid='cowrie.command.input') AND $__timeFilter(ts) GROUP BY 1, 2 ORDER BY 1",
      "format": "time_series",
      "editorMode": "code"
     }
    ],
-   "fieldConfig": {
-    "defaults": {
-     "custom": {
-      "drawStyle": "bars",
-      "fillOpacity": 25,
-      "stacking": {
-       "mode": "normal"
-      },
-      "spanNulls": false
-     }
-    },
-    "overrides": []
-   },
-   "options": {}
-  },
-  {
-   "id": 9,
-   "type": "geomap",
-   "title": "Where connections come from",
-   "description": "",
-   "datasource": {
-    "type": "grafana-postgresql-datasource",
-    "uid": "honeypot-pg"
-   },
-   "gridPos": {
-    "x": 0,
-    "y": 12,
-    "w": 14,
-    "h": 12
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "datasource": {
-      "type": "grafana-postgresql-datasource",
-      "uid": "honeypot-pg"
-     },
-     "rawQuery": true,
-     "rawSql": "SELECT g.lat, g.lon, g.city, g.country, count(*) AS connections, count(DISTINCT e.src_ip) AS ips FROM events e JOIN ip_geo g ON g.ip = e.src_ip WHERE e.eventid='cowrie.session.connect' AND g.lat IS NOT NULL AND $__timeFilter(e.ts) GROUP BY 1, 2, 3, 4",
-     "format": "table",
-     "editorMode": "code"
-    }
-   ],
-   "fieldConfig": {
-    "defaults": {},
-    "overrides": []
-   },
-   "options": {
-    "view": {
-     "id": "zero",
-     "lat": 20,
-     "lon": 0,
-     "zoom": 1
-    },
-    "controls": {
-     "showZoom": true,
-     "mouseWheelZoom": true
-    },
-    "tooltip": {
-     "mode": "details"
-    },
-    "basemap": {
-     "type": "osm-standard",
-     "name": "OpenStreetMap"
-    },
-    "layers": [
-     {
-      "type": "markers",
-      "name": "Attack sources",
-      "tooltip": true,
-      "location": {
-       "mode": "coords",
-       "latitude": "lat",
-       "longitude": "lon"
-      },
-      "config": {
-       "showLegend": false,
-       "style": {
-        "color": {
-         "fixed": "red"
-        },
-        "opacity": 0.6,
-        "symbol": {
-         "fixed": "img/icons/marker/circle.svg",
-         "mode": "fixed"
-        },
-        "size": {
-         "field": "connections",
-         "min": 4,
-         "max": 24,
-         "fixed": 6
-        }
-       }
-      }
-     }
-    ]
-   }
-  },
-  {
-   "id": 10,
-   "type": "table",
-   "title": "Top countries",
-   "description": "",
-   "datasource": {
-    "type": "grafana-postgresql-datasource",
-    "uid": "honeypot-pg"
-   },
-   "gridPos": {
-    "x": 14,
-    "y": 12,
-    "w": 10,
-    "h": 12
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "datasource": {
-      "type": "grafana-postgresql-datasource",
-      "uid": "honeypot-pg"
-     },
-     "rawQuery": true,
-     "rawSql": "SELECT coalesce(g.country, 'Unknown') AS country, count(*) AS connections, count(DISTINCT e.src_ip) AS ips FROM events e LEFT JOIN ip_geo g ON g.ip = e.src_ip WHERE e.eventid='cowrie.session.connect' AND $__timeFilter(e.ts) GROUP BY 1 ORDER BY 2 DESC LIMIT 25",
-     "format": "table",
-     "editorMode": "code"
-    }
-   ],
-   "fieldConfig": {
-    "defaults": {},
-    "overrides": []
-   },
-   "options": {
-    "showHeader": true,
-    "cellHeight": "sm"
-   }
-  },
-  {
-   "id": 11,
-   "type": "table",
-   "title": "Top source IPs",
-   "description": "",
-   "datasource": {
-    "type": "grafana-postgresql-datasource",
-    "uid": "honeypot-pg"
-   },
-   "gridPos": {
-    "x": 0,
-    "y": 24,
-    "w": 8,
-    "h": 8
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "datasource": {
-      "type": "grafana-postgresql-datasource",
-      "uid": "honeypot-pg"
-     },
-     "rawQuery": true,
-     "rawSql": "SELECT e.src_ip AS ip, coalesce(g.country, 'Unknown') AS country, count(*) AS connections FROM events e LEFT JOIN ip_geo g ON g.ip = e.src_ip WHERE e.eventid='cowrie.session.connect' AND $__timeFilter(e.ts) GROUP BY 1, 2 ORDER BY 3 DESC LIMIT 25",
-     "format": "table",
-     "editorMode": "code"
-    }
-   ],
-   "fieldConfig": {
-    "defaults": {},
-    "overrides": []
-   },
-   "options": {
-    "showHeader": true,
-    "cellHeight": "sm"
-   }
-  },
-  {
-   "id": 12,
-   "type": "table",
-   "title": "Top username:password pairs",
-   "description": "",
-   "datasource": {
-    "type": "grafana-postgresql-datasource",
-    "uid": "honeypot-pg"
-   },
-   "gridPos": {
-    "x": 8,
-    "y": 24,
-    "w": 8,
-    "h": 8
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "datasource": {
-      "type": "grafana-postgresql-datasource",
-      "uid": "honeypot-pg"
-     },
-     "rawQuery": true,
-     "rawSql": "SELECT username, password, count(*) AS attempts FROM events WHERE eventid IN ('cowrie.login.success','cowrie.login.failed') AND $__timeFilter(ts) GROUP BY 1, 2 ORDER BY 3 DESC LIMIT 25",
-     "format": "table",
-     "editorMode": "code"
-    }
-   ],
-   "fieldConfig": {
-    "defaults": {},
-    "overrides": []
-   },
-   "options": {
-    "showHeader": true,
-    "cellHeight": "sm"
-   }
-  },
-  {
-   "id": 13,
-   "type": "table",
-   "title": "Top SSH client versions",
-   "description": "",
-   "datasource": {
-    "type": "grafana-postgresql-datasource",
-    "uid": "honeypot-pg"
-   },
-   "gridPos": {
-    "x": 16,
-    "y": 24,
-    "w": 8,
-    "h": 8
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "datasource": {
-      "type": "grafana-postgresql-datasource",
-      "uid": "honeypot-pg"
-     },
-     "rawQuery": true,
-     "rawSql": "SELECT client_version, count(*) AS connections FROM events WHERE eventid='cowrie.client.version' AND $__timeFilter(ts) GROUP BY 1 ORDER BY 2 DESC LIMIT 25",
-     "format": "table",
-     "editorMode": "code"
-    }
-   ],
-   "fieldConfig": {
-    "defaults": {},
-    "overrides": []
-   },
-   "options": {
-    "showHeader": true,
-    "cellHeight": "sm"
-   }
+   "interval": "5m"
   },
   {
    "id": 14,
-   "type": "table",
-   "title": "Top commands",
-   "description": "",
-   "datasource": {
-    "type": "grafana-postgresql-datasource",
-    "uid": "honeypot-pg"
-   },
+   "type": "row",
+   "title": "Malware and sessions",
+   "collapsed": false,
    "gridPos": {
     "x": 0,
-    "y": 32,
-    "w": 12,
-    "h": 8
+    "y": 17,
+    "w": 24,
+    "h": 1
    },
-   "targets": [
-    {
-     "refId": "A",
-     "datasource": {
-      "type": "grafana-postgresql-datasource",
-      "uid": "honeypot-pg"
-     },
-     "rawQuery": true,
-     "rawSql": "SELECT input AS command, count(*) AS times FROM events WHERE eventid='cowrie.command.input' AND $__timeFilter(ts) GROUP BY 1 ORDER BY 2 DESC LIMIT 25",
-     "format": "table",
-     "editorMode": "code"
-    }
-   ],
-   "fieldConfig": {
-    "defaults": {},
-    "overrides": []
-   },
-   "options": {
-    "showHeader": true,
-    "cellHeight": "sm"
-   }
+   "panels": []
   },
   {
    "id": 15,
    "type": "table",
    "title": "Captured files",
-   "description": "",
+   "description": "Metadata only: the files themselves stay on the Pi.",
+   "gridPos": {
+    "x": 0,
+    "y": 18,
+    "w": 24,
+    "h": 6
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "align": "auto",
+      "filterable": false
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "first_seen"
+      },
+      "properties": [
+       {
+        "id": "unit",
+        "value": "time: MM-DD HH:mm:ss"
+       },
+       {
+        "id": "custom.width",
+        "value": 150
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "times"
+      },
+      "properties": [
+       {
+        "id": "custom.cellOptions",
+        "value": {
+         "type": "gauge",
+         "mode": "basic",
+         "valueDisplayMode": "text"
+        }
+       },
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#f2495c"
+        }
+       },
+       {
+        "id": "custom.width",
+        "value": 120
+       },
+       {
+        "id": "decimals",
+        "value": 0
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "sha256"
+      },
+      "properties": [
+       {
+        "id": "custom.width",
+        "value": 480
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm",
+    "footer": {
+     "show": false
+    }
+   },
    "datasource": {
     "type": "grafana-postgresql-datasource",
     "uid": "honeypot-pg"
-   },
-   "gridPos": {
-    "x": 12,
-    "y": 32,
-    "w": 12,
-    "h": 8
    },
    "targets": [
     {
@@ -706,51 +877,47 @@
       "uid": "honeypot-pg"
      },
      "rawQuery": true,
-     "rawSql": "SELECT min(ts) AS first_seen, shasum, count(*) AS times, max(coalesce(url, filename)) AS source FROM events WHERE eventid IN ('cowrie.session.file_download','cowrie.session.file_upload') AND shasum IS NOT NULL AND $__timeFilter(ts) GROUP BY 2 ORDER BY 1 DESC LIMIT 50",
+     "rawSql": "SELECT min(ts) AS first_seen, shasum AS sha256, count(*) AS times, max(coalesce(url, filename)) AS source FROM events WHERE eventid IN ('cowrie.session.file_download','cowrie.session.file_upload') AND shasum IS NOT NULL AND $__timeFilter(ts) GROUP BY 2 ORDER BY 1 DESC LIMIT 50",
      "format": "table",
      "editorMode": "code"
     }
-   ],
-   "fieldConfig": {
-    "defaults": {},
-    "overrides": []
-   },
-   "options": {
-    "showHeader": true,
-    "cellHeight": "sm"
-   }
+   ]
   },
   {
    "id": 16,
    "type": "table",
-   "title": "Sessions: click an ID for details",
+   "title": "Sessions: logged-in first, click an ID for details",
    "description": "",
-   "datasource": {
-    "type": "grafana-postgresql-datasource",
-    "uid": "honeypot-pg"
-   },
    "gridPos": {
     "x": 0,
-    "y": 40,
+    "y": 24,
     "w": 24,
     "h": 12
    },
-   "targets": [
-    {
-     "refId": "A",
-     "datasource": {
-      "type": "grafana-postgresql-datasource",
-      "uid": "honeypot-pg"
-     },
-     "rawQuery": true,
-     "rawSql": "SELECT s.started, s.session, s.protocol, s.src_ip, coalesce(g.country, 'Unknown') AS country, s.logged_in, s.username, s.password, s.failed_logins, s.commands, s.files, round(s.duration_s::numeric, 1) AS seconds FROM sessions s LEFT JOIN ip_geo g ON g.ip = s.src_ip WHERE $__timeFilter(s.started) ORDER BY s.logged_in DESC, s.started DESC LIMIT 200",
-     "format": "table",
-     "editorMode": "code"
-    }
-   ],
    "fieldConfig": {
-    "defaults": {},
+    "defaults": {
+     "custom": {
+      "align": "auto",
+      "filterable": false
+     }
+    },
     "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "started"
+      },
+      "properties": [
+       {
+        "id": "unit",
+        "value": "time: MM-DD HH:mm:ss"
+       },
+       {
+        "id": "custom.width",
+        "value": 150
+       }
+      ]
+     },
      {
       "matcher": {
        "id": "byName",
@@ -765,6 +932,155 @@
           "url": "/d/honeypot-session/session?var-session=${__value.raw}&from=now-90d&to=now"
          }
         ]
+       },
+       {
+        "id": "custom.width",
+        "value": 130
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "protocol"
+      },
+      "properties": [
+       {
+        "id": "custom.width",
+        "value": 80
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "src_ip"
+      },
+      "properties": [
+       {
+        "id": "custom.width",
+        "value": 140
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "logged_in"
+      },
+      "properties": [
+       {
+        "id": "custom.width",
+        "value": 90
+       },
+       {
+        "id": "custom.cellOptions",
+        "value": {
+         "type": "color-text"
+        }
+       },
+       {
+        "id": "mappings",
+        "value": [
+         {
+          "type": "value",
+          "options": {
+           "true": {
+            "text": "yes",
+            "color": "#73bf69",
+            "index": 0
+           },
+           "false": {
+            "text": "no",
+            "color": "#8e8e8e",
+            "index": 1
+           }
+          }
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "commands"
+      },
+      "properties": [
+       {
+        "id": "custom.cellOptions",
+        "value": {
+         "type": "gauge",
+         "mode": "basic",
+         "valueDisplayMode": "text"
+        }
+       },
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#5ad4e6"
+        }
+       },
+       {
+        "id": "custom.width",
+        "value": 130
+       },
+       {
+        "id": "decimals",
+        "value": 0
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "files"
+      },
+      "properties": [
+       {
+        "id": "custom.width",
+        "value": 70
+       },
+       {
+        "id": "custom.cellOptions",
+        "value": {
+         "type": "color-text"
+        }
+       },
+       {
+        "id": "color",
+        "value": {
+         "mode": "thresholds"
+        }
+       },
+       {
+        "id": "thresholds",
+        "value": {
+         "mode": "absolute",
+         "steps": [
+          {
+           "color": "#8e8e8e",
+           "value": null
+          },
+          {
+           "color": "#f2495c",
+           "value": 1
+          }
+         ]
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "seconds"
+      },
+      "properties": [
+       {
+        "id": "custom.width",
+        "value": 80
        }
       ]
      }
@@ -772,17 +1088,624 @@
    },
    "options": {
     "showHeader": true,
-    "cellHeight": "sm"
-   }
+    "cellHeight": "sm",
+    "footer": {
+     "show": false
+    }
+   },
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "honeypot-pg"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "honeypot-pg"
+     },
+     "rawQuery": true,
+     "rawSql": "SELECT s.started, s.session, s.protocol, s.src_ip, coalesce(g.country, 'Unknown') AS country, s.logged_in, s.username, s.password, s.commands, s.files, round(s.duration_s::numeric, 1) AS seconds FROM sessions s LEFT JOIN ip_geo g ON g.ip = s.src_ip WHERE $__timeFilter(s.started) ORDER BY s.logged_in DESC, s.started DESC LIMIT 200",
+     "format": "table",
+     "editorMode": "code"
+    }
+   ]
   },
   {
    "id": 17,
+   "type": "row",
+   "title": "Origins",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 36,
+    "w": 24,
+    "h": 1
+   },
+   "panels": []
+  },
+  {
+   "id": 18,
+   "type": "geomap",
+   "title": "Where connections come from",
+   "description": "",
+   "gridPos": {
+    "x": 0,
+    "y": 37,
+    "w": 14,
+    "h": 13
+   },
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "#f2495c"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "view": {
+     "id": "coords",
+     "lat": 25,
+     "lon": 10,
+     "zoom": 1.3
+    },
+    "controls": {
+     "showZoom": true,
+     "mouseWheelZoom": true,
+     "showAttribution": false
+    },
+    "tooltip": {
+     "mode": "details"
+    },
+    "basemap": {
+     "type": "xyz",
+     "name": "Dark background",
+     "config": {
+      "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGMQFBIHAAByADveLFgAAAAAAElFTkSuQmCC",
+      "attribution": ""
+     }
+    },
+    "layers": [
+     {
+      "type": "geojson",
+      "name": "Countries",
+      "tooltip": false,
+      "config": {
+       "src": "public/maps/countries.geojson",
+       "rules": [],
+       "idField": "id",
+       "style": {
+        "color": {
+         "fixed": "#2c3235"
+        },
+        "opacity": 1,
+        "lineWidth": 1,
+        "symbol": {
+         "fixed": "",
+         "mode": "fixed"
+        },
+        "size": {
+         "fixed": 5,
+         "min": 2,
+         "max": 15
+        },
+        "rotation": {
+         "fixed": 0,
+         "mode": "mod",
+         "min": -360,
+         "max": 360
+        },
+        "symbolAlign": {
+         "horizontal": "center",
+         "vertical": "center"
+        },
+        "textConfig": {
+         "fontSize": 12,
+         "offsetX": 0,
+         "offsetY": 0,
+         "textAlign": "center",
+         "textBaseline": "middle"
+        }
+       }
+      }
+     },
+     {
+      "type": "markers",
+      "name": "Attack sources",
+      "tooltip": true,
+      "location": {
+       "mode": "coords",
+       "latitude": "lat",
+       "longitude": "lon"
+      },
+      "config": {
+       "showLegend": false,
+       "style": {
+        "color": {
+         "fixed": "#f2495c"
+        },
+        "opacity": 0.65,
+        "symbol": {
+         "fixed": "img/icons/marker/circle.svg",
+         "mode": "fixed"
+        },
+        "size": {
+         "field": "connections",
+         "min": 5,
+         "max": 26,
+         "fixed": 6
+        }
+       }
+      }
+     }
+    ]
+   },
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "honeypot-pg"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "honeypot-pg"
+     },
+     "rawQuery": true,
+     "rawSql": "SELECT g.lat, g.lon, g.city, g.country, count(*) AS connections, count(DISTINCT e.src_ip) AS ips FROM events e JOIN ip_geo g ON g.ip = e.src_ip WHERE e.eventid='cowrie.session.connect' AND g.lat IS NOT NULL AND $__timeFilter(e.ts) GROUP BY 1, 2, 3, 4",
+     "format": "table",
+     "editorMode": "code"
+    }
+   ]
+  },
+  {
+   "id": 19,
+   "type": "table",
+   "title": "Top countries",
+   "description": "",
+   "gridPos": {
+    "x": 14,
+    "y": 37,
+    "w": 10,
+    "h": 6
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "align": "auto",
+      "filterable": false
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "connections"
+      },
+      "properties": [
+       {
+        "id": "custom.cellOptions",
+        "value": {
+         "type": "gauge",
+         "mode": "basic",
+         "valueDisplayMode": "text"
+        }
+       },
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#5794f2"
+        }
+       },
+       {
+        "id": "custom.width",
+        "value": 170
+       },
+       {
+        "id": "decimals",
+        "value": 0
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "ips"
+      },
+      "properties": [
+       {
+        "id": "custom.width",
+        "value": 70
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm",
+    "footer": {
+     "show": false
+    }
+   },
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "honeypot-pg"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "honeypot-pg"
+     },
+     "rawQuery": true,
+     "rawSql": "SELECT coalesce(g.country, 'Unknown') AS country, count(*) AS connections, count(DISTINCT e.src_ip) AS ips FROM events e LEFT JOIN ip_geo g ON g.ip = e.src_ip WHERE e.eventid='cowrie.session.connect' AND $__timeFilter(e.ts) GROUP BY 1 ORDER BY 2 DESC LIMIT 25",
+     "format": "table",
+     "editorMode": "code"
+    }
+   ]
+  },
+  {
+   "id": 20,
+   "type": "table",
+   "title": "Top source IPs",
+   "description": "Usually other hacked devices, not the people behind an attack.",
+   "gridPos": {
+    "x": 14,
+    "y": 43,
+    "w": 10,
+    "h": 7
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "align": "auto",
+      "filterable": false
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "connections"
+      },
+      "properties": [
+       {
+        "id": "custom.cellOptions",
+        "value": {
+         "type": "gauge",
+         "mode": "basic",
+         "valueDisplayMode": "text"
+        }
+       },
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#5794f2"
+        }
+       },
+       {
+        "id": "custom.width",
+        "value": 140
+       },
+       {
+        "id": "decimals",
+        "value": 0
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "last_seen"
+      },
+      "properties": [
+       {
+        "id": "unit",
+        "value": "time: MM-DD HH:mm:ss"
+       },
+       {
+        "id": "custom.width",
+        "value": 130
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "ip"
+      },
+      "properties": [
+       {
+        "id": "custom.width",
+        "value": 135
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm",
+    "footer": {
+     "show": false
+    }
+   },
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "honeypot-pg"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "honeypot-pg"
+     },
+     "rawQuery": true,
+     "rawSql": "SELECT e.src_ip AS ip, coalesce(g.country, 'Unknown') AS country, count(*) AS connections, max(e.ts) AS last_seen FROM events e LEFT JOIN ip_geo g ON g.ip = e.src_ip WHERE e.eventid='cowrie.session.connect' AND $__timeFilter(e.ts) GROUP BY 1, 2 ORDER BY 3 DESC LIMIT 25",
+     "format": "table",
+     "editorMode": "code"
+    }
+   ]
+  },
+  {
+   "id": 21,
+   "type": "row",
+   "title": "Attacker behavior",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 50,
+    "w": 24,
+    "h": 1
+   },
+   "panels": []
+  },
+  {
+   "id": 22,
+   "type": "table",
+   "title": "Top commands",
+   "description": "",
+   "gridPos": {
+    "x": 0,
+    "y": 51,
+    "w": 12,
+    "h": 11
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "align": "auto",
+      "filterable": false
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "times"
+      },
+      "properties": [
+       {
+        "id": "custom.cellOptions",
+        "value": {
+         "type": "gauge",
+         "mode": "basic",
+         "valueDisplayMode": "text"
+        }
+       },
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#5ad4e6"
+        }
+       },
+       {
+        "id": "custom.width",
+        "value": 130
+       },
+       {
+        "id": "decimals",
+        "value": 0
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm",
+    "footer": {
+     "show": false
+    }
+   },
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "honeypot-pg"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "honeypot-pg"
+     },
+     "rawQuery": true,
+     "rawSql": "SELECT input AS command, count(*) AS times FROM events WHERE eventid='cowrie.command.input' AND $__timeFilter(ts) GROUP BY 1 ORDER BY 2 DESC LIMIT 25",
+     "format": "table",
+     "editorMode": "code"
+    }
+   ]
+  },
+  {
+   "id": 23,
+   "type": "table",
+   "title": "Top username:password pairs",
+   "description": "",
+   "gridPos": {
+    "x": 12,
+    "y": 51,
+    "w": 6,
+    "h": 11
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "align": "auto",
+      "filterable": false
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "attempts"
+      },
+      "properties": [
+       {
+        "id": "custom.cellOptions",
+        "value": {
+         "type": "gauge",
+         "mode": "basic",
+         "valueDisplayMode": "text"
+        }
+       },
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#ff9830"
+        }
+       },
+       {
+        "id": "custom.width",
+        "value": 110
+       },
+       {
+        "id": "decimals",
+        "value": 0
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm",
+    "footer": {
+     "show": false
+    }
+   },
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "honeypot-pg"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "honeypot-pg"
+     },
+     "rawQuery": true,
+     "rawSql": "SELECT username, password, count(*) AS attempts FROM events WHERE (eventid='cowrie.login.success' OR eventid='cowrie.login.failed') AND $__timeFilter(ts) GROUP BY 1, 2 ORDER BY 3 DESC LIMIT 25",
+     "format": "table",
+     "editorMode": "code"
+    }
+   ]
+  },
+  {
+   "id": 24,
+   "type": "table",
+   "title": "Top SSH client versions",
+   "description": "",
+   "gridPos": {
+    "x": 18,
+    "y": 51,
+    "w": 6,
+    "h": 11
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "align": "auto",
+      "filterable": false
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "connections"
+      },
+      "properties": [
+       {
+        "id": "custom.cellOptions",
+        "value": {
+         "type": "gauge",
+         "mode": "basic",
+         "valueDisplayMode": "text"
+        }
+       },
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#b877d9"
+        }
+       },
+       {
+        "id": "custom.width",
+        "value": 110
+       },
+       {
+        "id": "decimals",
+        "value": 0
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm",
+    "footer": {
+     "show": false
+    }
+   },
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "honeypot-pg"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "honeypot-pg"
+     },
+     "rawQuery": true,
+     "rawSql": "SELECT client_version AS client, count(*) AS connections FROM events WHERE eventid='cowrie.client.version' AND $__timeFilter(ts) GROUP BY 1 ORDER BY 2 DESC LIMIT 25",
+     "format": "table",
+     "editorMode": "code"
+    }
+   ]
+  },
+  {
+   "id": 25,
    "type": "text",
    "title": "",
    "description": "",
    "gridPos": {
     "x": 0,
-    "y": 52,
+    "y": 62,
     "w": 24,
     "h": 2
    },
@@ -792,17 +1715,27 @@
    },
    "options": {
     "mode": "markdown",
-    "content": "Times are local to your browser. Locations are approximate: [IP Geolocation by DB-IP](https://db-ip.com) (CC BY 4.0). Source IPs are usually other hacked devices, not the people behind an attack."
-   }
+    "content": "Times use the timezone in COWRIE_LOG_TZ. Locations are approximate: [IP Geolocation by DB-IP](https://db-ip.com) (CC BY 4.0)."
+   },
+   "transparent": true
   }
  ],
  "tags": [
   "honeypot"
  ],
+ "graphTooltip": 1,
  "templating": {
   "list": []
  },
  "annotations": {
   "list": []
+ },
+ "timepicker": {
+  "refresh_intervals": [
+   "1m",
+   "5m",
+   "15m",
+   "1h"
+  ]
  }
 }
