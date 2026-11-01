@@ -176,6 +176,61 @@ creates `/etc/cowrie-report.env` (mode 600; backs it up before changing the
 topic), writes `cowrie-report.service` (runs as `cowrie`, sandboxed) and
 `cowrie-report.timer` (daily 22:00, `Persistent=true`), then sends a test report.
 
+## Dashboard (Grafana)
+
+Optional dashboard that runs on your own computer in Docker: totals, graphs over
+time, an attack map, top lists and session drill-down. Your computer pulls logs
+from the Pi over SSH, and the Pi never connects back. Malware samples and terminal
+recordings stay on the Pi.
+
+```
+Pi: cowrie.json --(SSH, restricted key)--> pull_logs.py --> ingest --> Postgres --> Grafana
+```
+
+Grafana listens on `127.0.0.1:3000` only, Postgres isn't published to the host,
+and Grafana's database login is read-only. Logs are treated as untrusted: only
+plain files named `cowrie.json*` are extracted, with a size cap.
+
+### Setup
+
+On your computer, from `dashboard/`:
+
+```bash
+PI_HOST=<pi-ip> PI_USER=<admin-user> COWRIE_LOG_TZ=<Region/City> ./setup.sh
+ssh-keygen -t ed25519 -N '' -C cowrie-logpull -f ~/.ssh/cowrie-logpull
+scp -P 22222 pi/cowrie-log-export pi/install-log-export.sh <admin-user>@<pi-ip>:
+K=$(cat ~/.ssh/cowrie-logpull.pub)
+O='restrict,command="sudo -n -u cowrie /usr/local/bin/cowrie-log-export"'
+echo "$O $K" | ssh -p 22222 <admin-user>@<pi-ip> 'cat >> ~/.ssh/authorized_keys'
+```
+
+On the Pi: `sudo bash ~/install-log-export.sh <admin-user>`
+
+Back on your computer:
+
+```bash
+./update.sh
+mkdir -p ~/.config/systemd/user
+cp systemd/cowrie-dashboard-update.* ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now cowrie-dashboard-update.timer
+```
+
+Open http://127.0.0.1:3000 and log in as `admin`. The password is
+`GRAFANA_ADMIN_PASSWORD` in `dashboard/.env`, which git ignores. The timer assumes
+the repo is at `~/Desktop/cowrie-pi-honeypot`; edit the `.service` file if not.
+
+### Good to know
+
+- Each pull includes log files changed in the last 14 days, so keep the gap
+  between pulls shorter than that.
+- The timer runs while you're logged in and catches up afterwards.
+- `COWRIE_LOG_TZ` must match the Pi's timezone, because Cowrie stamps local time.
+- Run `./fetch-geoip.sh` about monthly. IP locations are approximate:
+  [IP Geolocation by DB-IP](https://db-ip.com) (CC BY 4.0).
+- The map's background images load from an online service in your browser.
+- To change dashboards, edit `grafana/make_dashboards.py` and run it.
+
 ## Safety notes
 
 - When an attacker runs `wget`/`curl`, **the Pi really fetches the URL**. Keep
@@ -203,5 +258,5 @@ topic), writes `cowrie-report.service` (runs as `cowrie`, sandboxed) and
 ## Next steps
 
 - Isolate the Pi on a guest network/VLAN, then forward 22/23 from the router.
-- Optional: DShield output plugin, or Grafana on another machine for dashboards.
+- Optional: DShield output plugin.
 - Analyze captured samples in an isolated VM (for example with Ghidra).

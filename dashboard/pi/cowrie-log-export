@@ -1,0 +1,7 @@
+#!/bin/sh
+# Writes a tar.gz of recent Cowrie JSON logs to stdout. Runs as the cowrie user,
+# via a forced SSH command. Sends logs only, never captured malware or recordings.
+set -eu
+cd /home/cowrie/cowrie/var/log/cowrie
+find . -maxdepth 1 -type f -name 'cowrie.json*' -mtime -14 -printf '%P\0' \
+  | { tar --null -T - --warning=no-file-changed -czf - || [ $? -eq 1 ]; }

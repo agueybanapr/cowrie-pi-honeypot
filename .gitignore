@@ -14,3 +14,7 @@ downloads/
 *.swp
 *~
 .DS_Store
+
+# Dashboard: local data stays out of git; generated dashboards stay in
+dashboard/data/
+!dashboard/grafana/dashboards/*.json

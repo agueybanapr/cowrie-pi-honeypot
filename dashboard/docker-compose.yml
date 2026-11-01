@@ -1,0 +1,68 @@
+# Honeypot dashboard. Everything is local: Grafana binds to 127.0.0.1 and the
+# database is not published to the host.
+name: honeypot
+
+networks:
+  internal:
+    internal: true    # db and ingest have no internet access
+  web: {}
+
+volumes:
+  db-data: {}
+  grafana-data: {}
+
+services:
+  db:
+    image: postgres:16.6-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: honeypot
+      POSTGRES_USER: honeypot
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?run setup.sh first}
+      GRAFANA_DB_PASSWORD: ${GRAFANA_DB_PASSWORD:?run setup.sh first}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./db/01-init.sh:/docker-entrypoint-initdb.d/01-init.sh:ro
+    networks: [internal]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U honeypot -d honeypot"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  grafana:
+    image: grafana/grafana-oss:11.6.0
+    restart: unless-stopped
+    depends_on:
+      db: {condition: service_healthy}
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?run setup.sh first}
+      GRAFANA_DB_PASSWORD: ${GRAFANA_DB_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/overview.json
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    networks: [internal, web]
+
+  ingest:
+    image: honeypot-ingest:local
+    build: ./ingest
+    profiles: [tools]    # one-shot: docker compose run --rm ingest
+    depends_on:
+      db: {condition: service_healthy}
+    environment:
+      DB_PASSWORD: ${DB_PASSWORD}
+      COWRIE_LOG_TZ: ${COWRIE_LOG_TZ:-America/New_York}
+    volumes:
+      - ./data/logs:/logs:ro
+      - ./data/geoip:/geoip:ro
+    read_only: true
+    networks: [internal]

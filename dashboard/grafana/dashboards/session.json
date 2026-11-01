@@ -1,0 +1,151 @@
+{
+ "uid": "honeypot-session",
+ "title": "Session",
+ "schemaVersion": 39,
+ "version": 1,
+ "editable": false,
+ "timezone": "browser",
+ "refresh": "5m",
+ "time": {
+  "from": "now-90d",
+  "to": "now"
+ },
+ "panels": [
+  {
+   "id": 101,
+   "type": "table",
+   "title": "Session",
+   "description": "",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "honeypot-pg"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 0,
+    "w": 24,
+    "h": 4
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "honeypot-pg"
+     },
+     "rawQuery": true,
+     "rawSql": "SELECT s.session, s.started, s.protocol, s.src_ip, g.country, g.city, s.logged_in, s.username, s.password, s.failed_logins, s.commands, s.files, round(s.duration_s::numeric, 1) AS seconds FROM sessions s LEFT JOIN ip_geo g ON g.ip = s.src_ip WHERE s.session = ${session:sqlstring}",
+     "format": "table",
+     "editorMode": "code"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm"
+   }
+  },
+  {
+   "id": 102,
+   "type": "table",
+   "title": "Timeline",
+   "description": "",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "honeypot-pg"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 4,
+    "w": 24,
+    "h": 16
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "honeypot-pg"
+     },
+     "rawQuery": true,
+     "rawSql": "SELECT ts AS time, replace(eventid, 'cowrie.', '') AS event, coalesce(input, url, CASE WHEN username IS NOT NULL THEN username || ':' || coalesce(password, '') END, client_version, filename, CASE WHEN duration_s IS NOT NULL THEN round(duration_s::numeric, 1)::text || ' seconds' END, '') AS detail, coalesce(shasum, '') AS sha256 FROM events WHERE session = ${session:sqlstring} ORDER BY ts",
+     "format": "table",
+     "editorMode": "code"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm"
+   }
+  },
+  {
+   "id": 103,
+   "type": "table",
+   "title": "Replay it on the Pi",
+   "description": "Terminal recordings stay on the Pi.",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "honeypot-pg"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 20,
+    "w": 24,
+    "h": 3
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "honeypot-pg"
+     },
+     "rawQuery": true,
+     "rawSql": "SELECT 'cowrie-stats replay ' || ${session:sqlstring} AS command",
+     "format": "table",
+     "editorMode": "code"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm"
+   }
+  }
+ ],
+ "tags": [
+  "honeypot"
+ ],
+ "templating": {
+  "list": [
+   {
+    "name": "session",
+    "label": "Session",
+    "type": "query",
+    "datasource": {
+     "type": "grafana-postgresql-datasource",
+     "uid": "honeypot-pg"
+    },
+    "refresh": 1,
+    "sort": 0,
+    "query": "SELECT session FROM sessions ORDER BY started DESC LIMIT 500",
+    "definition": "SELECT session FROM sessions ORDER BY started DESC LIMIT 500",
+    "includeAll": false,
+    "multi": false
+   }
+  ]
+ },
+ "annotations": {
+  "list": []
+ }
+}

@@ -1,0 +1,6 @@
+[Unit]
+Description=Pull Cowrie logs from the Pi into the dashboard
+
+[Service]
+Type=oneshot
+ExecStart=%h/Desktop/cowrie-pi-honeypot/dashboard/update.sh
