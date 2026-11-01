@@ -462,8 +462,8 @@
      "mode": "details"
     },
     "basemap": {
-     "type": "default",
-     "name": "Basemap"
+     "type": "osm-standard",
+     "name": "OpenStreetMap"
     },
     "layers": [
      {

@@ -228,7 +228,7 @@ the repo is at `~/Desktop/cowrie-pi-honeypot`; edit the `.service` file if not.
 - `COWRIE_LOG_TZ` must match the Pi's timezone, because Cowrie stamps local time.
 - Run `./fetch-geoip.sh` about monthly. IP locations are approximate:
   [IP Geolocation by DB-IP](https://db-ip.com) (CC BY 4.0).
-- The map's background images load from an online service in your browser.
+- The map background comes from OpenStreetMap, loaded by your browser. No key is needed, and your logs are not sent to it.
 - To change dashboards, edit `grafana/make_dashboards.py` and run it.
 
 ## Safety notes

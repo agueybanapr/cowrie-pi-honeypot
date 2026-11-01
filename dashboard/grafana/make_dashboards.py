@@ -48,7 +48,7 @@ def geomap(title, sql, x, y, w, h):
     p["options"] = {"view": {"id": "zero", "lat": 20, "lon": 0, "zoom": 1},
                     "controls": {"showZoom": True, "mouseWheelZoom": True},
                     "tooltip": {"mode": "details"},
-                    "basemap": {"type": "default", "name": "Basemap"},
+                    "basemap": {"type": "osm-standard", "name": "OpenStreetMap"},
                     "layers": [{"type": "markers", "name": "Attack sources", "tooltip": True,
                                 "location": {"mode": "coords", "latitude": "lat", "longitude": "lon"},
                                 "config": {"showLegend": False, "style": {
