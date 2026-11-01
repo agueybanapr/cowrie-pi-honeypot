@@ -50,7 +50,7 @@ WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 EV="$WORK/events.jsonl"
 LOADED=0
-SINCE=""   # UTC cutoff "YYYY-MM-DDTHH:MM:SS"; empty means all retained logs
+SINCE=""   # Local-time cutoff "YYYY-MM-DDTHH:MM:SS"; empty means all retained logs
 
 # Shared jq helpers: strip control characters and shorten long values.
 DEFS='def clean: tostring | gsub("[[:cntrl:]]"; "?");
@@ -87,12 +87,12 @@ summary() {
   case "$TOP" in ''|0|*[!0-9]*) die "--top must be a positive number" ;; esac
   if [ -n "$hours" ]; then
     case "$hours" in 0|*[!0-9]*) die "--hours must be a positive number" ;; esac
-    SINCE="$(date -u -d "-$hours hours" +%Y-%m-%dT%H:%M:%S)"
+    SINCE="$(date -d "-$hours hours" +%Y-%m-%dT%H:%M:%S)"
   fi
   load_events
   if [ ! -s "$EV" ]; then
     if [ -n "$SINCE" ]; then
-      echo "No Cowrie activity in the last $hours hours (since $SINCE UTC)."
+      echo "No Cowrie activity in the last $hours hours (since $SINCE local)."
     else
       echo "No Cowrie events in $LOG_DIR yet."
     fi
@@ -104,9 +104,9 @@ summary() {
   ips="$(jq -r 'select(.eventid == "cowrie.session.connect") | .src_ip // empty' "$EV" | sort -u | wc -l)"
 
   if [ -n "$SINCE" ]; then
-    printf 'Cowrie activity, last %s hours (since %s UTC)\n\n' "$hours" "$SINCE"
+    printf 'Cowrie activity, last %s hours (since %s local)\n\n' "$hours" "$SINCE"
   else
-    printf 'Cowrie activity %s -> %s (UTC)\n\n' "${first:0:19}" "${last:0:19}"
+    printf 'Cowrie activity %s -> %s (local time)\n\n' "${first:0:19}" "${last:0:19}"
   fi
   jq -rn '(reduce inputs as $e ({}; .[$e.eventid] += 1)) as $c
     | [ ["Connections",       "cowrie.session.connect"],
@@ -173,7 +173,7 @@ list_sessions() {
   fi
   { printf '%s\n' "$rows" | head -n "$limit" | awk -F'\t' '
       BEGIN { f = "%4s  %-19s  %-6s  %-15s  %-28s  %4s  %5s  %6s  %s\n"
-              printf f, "#", "START (UTC)", "PROTO", "SOURCE IP", "USER:PASS", "CMDS", "FILES", "TIME", "REPLAY" }
+              printf f, "#", "START (local)", "PROTO", "SOURCE IP", "USER:PASS", "CMDS", "FILES", "TIME", "REPLAY" }
       { printf f, $1, $2, $3, $4, $5, $6, $7, $8, $9 }'; } || true
 }
 
@@ -190,7 +190,7 @@ find_session() { # number (1-6 digits) or session id -> TSV row
 print_header() {
   local n start proto ip cred cmds files dur tty id ttypath
   IFS=$'\t' read -r n start proto ip cred cmds files dur tty id ttypath <<<"$1"
-  printf 'Session #%s (%s)\n  %s from %s at %s UTC, lasted %s, logged in as %s\n  %s commands, %s files\n' \
+  printf 'Session #%s (%s)\n  %s from %s at %s local, lasted %s, logged in as %s\n  %s commands, %s files\n' \
     "$n" "$id" "$proto" "$ip" "$start" "$dur" "$cred" "$cmds" "$files"
 }
 

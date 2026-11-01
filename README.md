@@ -142,7 +142,7 @@ timer), then `sudo systemctl daemon-reload`.
 |---|---|
 | `cowrie-stats` | Totals, connections per day, top IPs, credentials, commands, client versions, URLs |
 | `cowrie-stats summary --hours 24 --top 5` | Same, limited to a time window and list length |
-| `cowrie-stats sessions [N]` | Numbered list of logged-in sessions, newest first |
+| `cowrie-stats sessions [N]` | Numbered list of logged-in sessions, newest first, in local time |
 | `cowrie-stats replay [#\|ID]` | Replays a session like a video with `playlog` (asks which if omitted) |
 | `cowrie-stats show <#\|ID>` | One session's commands and files as text |
 | `cowrie-stats downloads` | Captured files: SHA-256, saved path, source URLs |
@@ -197,6 +197,7 @@ topic), writes `cowrie-report.service` (runs as `cowrie`, sandboxed) and
 | Long pasted command split in two | Paste shorter lines one at a time |
 | `etc/cowrie.cfg.dist` not found | Cowrie 3.x bundles defaults in `src/cowrie/data/etc/` |
 | Settings in `etc/cowrie.cfg` ignored | Cowrie was started from another directory; start it from `~/cowrie` |
+| Raw `cowrie.json` times look wrong | Cowrie follows the Pi's timezone but still ends stamps with `Z`, so they are **local time despite the `Z`**. `cowrie-stats` treats them as local. Tell any tool that ingests the logs (Grafana, OpenSearch) to use local time, not UTC. Reports can be off by up to an hour around daylight-saving changes |
 | perl locale warnings over SSH | Your computer sends a locale the Pi lacks; `sudo sed -i 's/^# *en_US.UTF-8/en_US.UTF-8/' /etc/locale.gen && sudo locale-gen` |
 
 ## Next steps
