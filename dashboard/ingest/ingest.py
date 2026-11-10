@@ -15,6 +15,7 @@ GEOIP = Path("/geoip/dbip-city-lite.mmdb")
 LOG_TZ = ZoneInfo(os.environ.get("COWRIE_LOG_TZ", "America/New_York"))
 CONTROL = re.compile(r"[\x00-\x1f\x7f]")
 MAX_TEXT = 16384
+MAX_LINE = 1 << 20   # longer log lines are skipped, so one huge line can't exhaust memory
 SQL = """INSERT INTO events (id, ts, eventid, session, src_ip, dst_port, protocol, sensor,
   username, password, input, url, shasum, filename, client_version, duration_s)
   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT (id) DO NOTHING"""
@@ -92,7 +93,12 @@ def main():
                 continue
             with path.open("rb") as log:
                 rows = []
-                for raw in log:
+                while raw := log.readline(MAX_LINE + 1):
+                    if len(raw) > MAX_LINE:
+                        bad += 1
+                        while raw and not raw.endswith(b"\n"):   # skip the rest of that line
+                            raw = log.readline(MAX_LINE)
+                        continue
                     try:
                         rows.append(parse(raw.rstrip(b"\r\n")))
                     except (ValueError, TypeError, KeyError):

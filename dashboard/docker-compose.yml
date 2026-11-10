@@ -12,8 +12,10 @@ volumes:
   grafana-data: {}
 
 services:
+  # Images are pinned by digest. To update: pick a new tag, then
+  #   docker buildx imagetools inspect <image>:<tag>   and copy the top-level Digest.
   db:
-    image: postgres:16.6-alpine
+    image: postgres:16.15-alpine@sha256:aa6cb33cf4c19c765cefcf48d96176258800870a9a1e930ad126200f9d825139
     restart: unless-stopped
     environment:
       POSTGRES_DB: honeypot
@@ -31,8 +33,11 @@ services:
       retries: 20
 
   grafana:
-    image: grafana/grafana-oss:11.6.0
+    # grafana/grafana is the OSS image; grafana/grafana-oss is no longer updated.
+    image: grafana/grafana:13.2.5@sha256:9f7aa1e1e3246aade5792d35a738049f7f32f89cd51d1956cf426a4e86268a84
     restart: unless-stopped
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
     depends_on:
       db: {condition: service_healthy}
     ports:
@@ -57,6 +62,10 @@ services:
     image: honeypot-ingest:local
     build: ./ingest
     profiles: [tools]    # one-shot: docker compose run --rm ingest
+    # Runs as you, so data/ can stay private (mode 700) instead of world-readable.
+    user: "${HOST_UID:?run setup.sh first}:${HOST_GID:?run setup.sh first}"
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
     depends_on:
       db: {condition: service_healthy}
     environment:

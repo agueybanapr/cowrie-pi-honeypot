@@ -83,9 +83,31 @@ User=cowrie
 Group=cowrie
 EnvironmentFile=/etc/cowrie-report.env
 ExecStart=/usr/local/bin/cowrie-report
+# Sandbox: the report only reads Cowrie's logs and sends one HTTPS request.
 NoNewPrivileges=yes
 PrivateTmp=yes
-ProtectSystem=full
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged
+SystemCallErrorNumber=EPERM
+SystemCallArchitectures=native
+UMask=0077
 EOF
 
 cat > /etc/systemd/system/cowrie-report.timer <<'EOF'

@@ -57,6 +57,21 @@ if [ "$(LC_ALL=C wc -c < "$BODY")" -gt "$MAX_BYTES" ]; then
   mv "$WORK/cut.txt" "$BODY"
 fi
 
+# Free space where Cowrie stores logs and captured files (usually the SD card). Added after
+# the cut above so it's always shown; it stays within ntfy's limit (MAX_BYTES leaves room).
+used="$(df -P "${COWRIE_HOME:-/home/cowrie/cowrie}/var" 2>/dev/null | awk 'NR == 2 { sub("%", "", $5); print $5 }')"
+case "$used" in
+  ''|*[!0-9]*) ;;
+  *)
+    if [ "$used" -ge 90 ]; then
+      printf '\n⚠️ Disk: %s%% used. Clear old logs or captured files on the Pi.\n' "$used" >> "$BODY"
+      [ "$priority" -ge 4 ] || priority=4
+      tags="warning,$tags"
+    else
+      printf '\n💾 Disk: %s%% used\n' "$used" >> "$BODY"
+    fi ;;
+esac
+
 {
   if [ -n "${NTFY_TOKEN:-}" ]; then
     printf 'header = "Authorization: Bearer %s"\n' "$NTFY_TOKEN"

@@ -3,4 +3,5 @@ Description=Pull Cowrie logs from the Pi into the dashboard
 
 [Service]
 Type=oneshot
-ExecStart=%h/Desktop/cowrie-pi-honeypot/dashboard/update.sh
+# @DASHBOARD_DIR@ is replaced with the real path when installing (see README, Dashboard setup).
+ExecStart="@DASHBOARD_DIR@/update.sh"

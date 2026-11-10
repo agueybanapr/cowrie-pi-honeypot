@@ -4,7 +4,8 @@
 # Runs itself as the cowrie user (via sudo), so it never executes Cowrie's
 # Python environment as root. Attacker-supplied text in listings has control
 # characters replaced by '?', so log contents cannot drive your terminal.
-# Replays show the recorded session output as-is; that is what a replay is.
+# Replays keep colours and cursor movement but drop sequences that act on your
+# terminal (clipboard, title, hyperlinks, reports); --raw replays the bytes as-is.
 
 set -euo pipefail
 
@@ -25,7 +26,9 @@ Usage:
   cowrie-stats sessions [N]      list the N most recent logged-in sessions (default 20)
   cowrie-stats sessions --files [N]
                                  only sessions that downloaded or uploaded a file
-  cowrie-stats replay [#|ID]     replay a session like a video (asks which one if omitted)
+  cowrie-stats replay [--raw] [#|ID]
+                                 replay a session like a video (asks which one if omitted);
+                                 --raw keeps escape sequences that act on your terminal
   cowrie-stats show <#|ID>       print one session's commands and files as text
   cowrie-stats files             captured files: how they arrived, SHA-256, sessions to replay
 
@@ -56,9 +59,11 @@ EV="$WORK/events.jsonl"
 LOADED=0
 SINCE=""   # Local-time cutoff "YYYY-MM-DDTHH:MM:SS"; empty means all retained logs
 
-# Shared jq helpers: strip control characters and shorten long values.
+# Shared jq helpers: strip control characters and shorten long values. defang turns
+# URLs and domains into text a phone won't make tappable (hxxp://evil[.]com).
 DEFS='def clean: tostring | gsub("[[:cntrl:]]"; "?");
-def trunc($n): if length > $n then .[0:$n-1] + "~" else . end;'
+def trunc($n): if length > $n then .[0:$n-1] + "~" else . end;
+def defang: gsub("http"; "hxxp"; "i") | gsub("ftp"; "fxp"; "i") | gsub("\\."; "[.]");'
 
 # Read current and rotated JSON logs once, keeping only the events used below.
 # Malformed lines are skipped rather than aborting the report.
@@ -181,11 +186,11 @@ report() {
       ($logins | map("\(.username // "" | clean):\(.password // "" | clean)" | trunc(40)) | ranked)[],
       "",
       "💻 Top commands",
-      ($cmds | map(.input // "" | clean | trunc(50)) | ranked)[],
+      ($cmds | map(.input // "" | clean | defang | trunc(50)) | ranked)[],
       (if ($files | length) > 0 then
          "",
          "🚩 Files",
-         ($files[0:$top][] | "   \(.shasum[0:12])  \(.url // .filename // "source not logged" | clean | trunc(40))")
+         ($files[0:$top][] | "   \(.shasum[0:12])  \(.url // .filename // "source not logged" | clean | defang | trunc(40))")
        else empty end)' "$EV"
 }
 
@@ -277,8 +282,40 @@ show_session() {
       else empty end' "$EV"
 }
 
+# Pass a recording through, minus the escape sequences that act on your terminal instead
+# of drawing on it: OSC/DCS/APC/PM/SOS strings (clipboard writes, window titles, hyperlinks,
+# terminal-specific commands) and requests that make the terminal type a reply (window and
+# title reports, status and attribute queries). Colours and cursor movement are kept, so the
+# replay still looks right. Works on a stream, holding back a sequence split across reads.
+tty_filter() {
+  perl -e '
+    use strict; use warnings;
+    binmode STDIN; binmode STDOUT; $| = 1;
+    my $str = qr/(?:\e[\]PX^_]|\xc2[\x90\x98\x9d\x9e\x9f])/;      # starts a string sequence
+    my $body = qr/(?:(?!\xc2\x9c)[^\a\e])*/;                      # its contents
+    my $csi = qr/(?:\e\[|\xc2\x9b)/;
+    my $buf = "";
+    while (sysread(STDIN, my $in, 65536)) {
+      $buf .= $in;
+      # A string sequence ends at BEL or ST; any other ESC also ends it in most terminals.
+      $buf =~ s/$str$body(?:\a|\e\\|\xc2\x9c|(?=\e))//g;
+      $buf =~ s/$csi[0-9;?>=]*[tnc]//g;
+      my $hold = "";
+      if ($buf =~ s/($str$body|$csi[0-9;?>=]*|\e|\xc2)\z//) {
+        $hold = $1;
+        $hold = "" if length($hold) > 65536;    # an endless string sequence is dropped
+      }
+      print $buf;
+      $buf = $hold;
+    }
+    # Anything left is an unfinished sequence: drop it.
+  '
+}
+
 replay() {
-  local sel="${1:-}" row ttypath
+  local raw=0 sel row ttypath
+  if [ "${1:-}" = --raw ]; then raw=1; shift; fi
+  sel="${1:-}"
   if [ -z "$sel" ]; then
     list_sessions 20 || return 0
     read -rp $'\nReplay which #? ' sel
@@ -299,10 +336,12 @@ replay() {
   [ -f "$ttypath" ] || die "recording not found: $ttypath"
   print_header "$row"
   printf '  Replaying (Ctrl+C to stop)...\n\n'
-  if [ -x "$PLAYLOG" ]; then
-    "$PLAYLOG" "$@" "$ttypath"
+  local play=("$COWRIE_HOME/cowrie-env/bin/python" -m cowrie.scripts.playlog)
+  [ -x "$PLAYLOG" ] && play=("$PLAYLOG")
+  if [ "$raw" = 1 ]; then
+    "${play[@]}" "$@" "$ttypath"
   else
-    "$COWRIE_HOME/cowrie-env/bin/python" -m cowrie.scripts.playlog "$@" "$ttypath"
+    "${play[@]}" "$@" "$ttypath" | tty_filter
   fi
 }
 

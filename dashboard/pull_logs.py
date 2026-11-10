@@ -16,6 +16,20 @@ MAX_TOTAL = 4 * 1024**3
 MAX_SAMPLE = 256 * 1024
 
 
+def write_file(folder, name, chunks):
+    """Write chunks to folder/name via a private temp file, which is removed on any failure."""
+    with tempfile.NamedTemporaryFile(dir=folder, prefix=".pull-", delete=False) as tmp:
+        try:
+            for chunk in chunks:
+                tmp.write(chunk)
+            tmp.flush()
+            os.chmod(tmp.name, 0o600)   # captured data stays private to you
+            os.replace(tmp.name, folder / name)
+        except BaseException:
+            os.unlink(tmp.name)
+            raise
+
+
 def save_sample(archive, member, name):
     if member.size > MAX_SAMPLE:
         print(f"skipped oversized sample: {name}", file=sys.stderr)
@@ -24,11 +38,13 @@ def save_sample(archive, member, name):
     if hashlib.sha256(data).hexdigest() != name or b"\0" in data:
         print(f"skipped sample that failed checks: {name}", file=sys.stderr)
         return 0
-    with tempfile.NamedTemporaryFile(dir=SAMPLES, delete=False) as tmp:
-        tmp.write(data)
-    os.chmod(tmp.name, 0o644)
-    os.replace(tmp.name, SAMPLES / name)
+    write_file(SAMPLES, name, [data])
     return 1
+
+
+def read_chunks(source):
+    while chunk := source.read(1024 * 1024):
+        yield chunk
 
 
 def main():
@@ -36,7 +52,11 @@ def main():
            "-o", "StrictHostKeyChecking=yes", "-o", "ConnectTimeout=15", f"{USER}@{HOST}"]
     proc = subprocess.Popen(ssh, stdout=subprocess.PIPE)
     total = count = samples = 0
-    SAMPLES.mkdir(exist_ok=True)
+    SAMPLES.mkdir(mode=0o700, exist_ok=True)
+    # Remove temp files left by an interrupted run (e.g. a power cut during a pull).
+    for folder in (OUT, SAMPLES):
+        for stale in folder.glob(".pull-*"):
+            stale.unlink(missing_ok=True)
     try:
         with tarfile.open(fileobj=proc.stdout, mode="r|gz") as archive:
             for member in archive:
@@ -50,12 +70,7 @@ def main():
                 total += member.size
                 if total > MAX_TOTAL:
                     sys.exit("archive exceeds the size limit; stopping")
-                with tempfile.NamedTemporaryFile(dir=OUT, delete=False) as tmp:
-                    source = archive.extractfile(member)
-                    while chunk := source.read(1024 * 1024):
-                        tmp.write(chunk)
-                os.chmod(tmp.name, 0o644)
-                os.replace(tmp.name, OUT / name)
+                write_file(OUT, name, read_chunks(archive.extractfile(member)))
                 count += 1
     finally:
         if proc.stdout:
