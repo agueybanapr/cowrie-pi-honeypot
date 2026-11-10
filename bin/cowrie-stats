@@ -66,12 +66,14 @@ def trunc($n): if length > $n then .[0:$n-1] + "~" else . end;
 def defang: gsub("http"; "hxxp"; "i") | gsub("ftp"; "fxp"; "i") | gsub("\\."; "[.]");'
 
 # Read current and rotated JSON logs once, keeping only the events used below.
-# Malformed lines are skipped rather than aborting the report.
+# Malformed lines are skipped rather than aborting the report. grep -a keeps going past
+# NUL bytes (an SD card can leave them after a power cut); without it grep stops
+# printing matches at the first one and the counts come out too low.
 load_events() {
   [ "$LOADED" = 1 ] && return 0
   find "$LOG_DIR" -maxdepth 1 -type f -name 'cowrie.json*' -print0 \
     | xargs -0 -r zcat -f -- \
-    | LC_ALL=C grep -E '"eventid": ?"cowrie\.(session\.(connect|closed|file_download|file_upload)|login\.(success|failed)|command\.input|log\.closed|client\.version)"' \
+    | LC_ALL=C grep -a -E '"eventid": ?"cowrie\.(session\.(connect|closed|file_download|file_upload)|login\.(success|failed)|command\.input|log\.closed|client\.version)"' \
     | jq -cR --arg since "$SINCE" 'fromjson? | select(type == "object" and (.eventid | type) == "string")
         | select($since == "" or ((.timestamp // "") >= $since))
         | select(.eventid | test("^cowrie\\.(session\\.(connect|closed|file_download|file_upload)|login\\.(success|failed)|command\\.input|log\\.closed|client\\.version)$"))' \
