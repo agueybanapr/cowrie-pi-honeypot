@@ -3,6 +3,10 @@
 A medium-interaction SSH/Telnet honeypot ([Cowrie](https://github.com/cowrie/cowrie))
 on a Raspberry Pi, with a terminal stats/replay tool and a daily ntfy.sh report.
 
+![Grafana overview: totals, login success rate, captured files and activity over time](docs/screenshots/dashboard-overview.png)
+
+<sub>All screenshots use made-up demo data. The IP addresses are reserved documentation ranges (RFC 5737), and the locations are invented.</sub>
+
 | | |
 |---|---|
 | Tested on | Raspberry Pi 2B (1 GB RAM, Ethernet), Raspberry Pi OS Lite 32-bit (Debian Trixie) |
@@ -155,6 +159,12 @@ is never executed as root. Listings replace control characters in
 attacker-supplied text with `?`, so log contents cannot drive your terminal.
 Extra arguments after `replay #` are passed to `playlog`.
 
+<img src="docs/screenshots/cli-summary.png" alt="cowrie-stats summary: totals, connections per day and top lists" width="520">
+
+![cowrie-stats sessions and show: recent logged-in sessions and one session's commands](docs/screenshots/cli-sessions.png)
+
+![cowrie-stats files: captured files with hashes and the sessions that delivered them](docs/screenshots/cli-files.png)
+
 ### cowrie-report
 
 Runs `cowrie-stats report` for the last `REPORT_HOURS` (default 24) and posts it to
@@ -172,6 +182,8 @@ Sends a high-priority alert instead if the `cowrie` service is not running. The
 token goes to curl on stdin, never on its command line. Bodies are trimmed to
 stay under ntfy's 4 KB message limit.
 
+<img src="docs/screenshots/report-phone.png" alt="Daily report in ntfy at phone width, with an Open dashboard button" width="320">
+
 ### install-cowrie-report.sh
 
 One-time installer, safe to re-run: installs both scripts to `/usr/local/bin`,
@@ -187,6 +199,14 @@ from the Pi over SSH, and the Pi never connects back. Captured text files (scrip
 to 256 KiB) are copied too, so they can be read on the Sample page; they are verified by
 hash, stored as text, and never run. Binaries and terminal recordings stay on the Pi.
 The page's VirusTotal and MalwareBazaar buttons send only the hash, and only when clicked.
+
+![Captured files and logged-in sessions tables](docs/screenshots/dashboard-sessions.png)
+
+![Attack map with top countries and source IPs](docs/screenshots/dashboard-origins.png)
+
+![Session page: details and event timeline for one session](docs/screenshots/dashboard-session.png)
+
+![Sample page: hash lookups, delivering sessions and read-only file contents](docs/screenshots/dashboard-sample.png)
 
 ```
 Pi: cowrie.json --(SSH, restricted key)--> pull_logs.py --> ingest --> Postgres --> Grafana
@@ -265,3 +285,9 @@ the repo is at `~/Desktop/cowrie-pi-honeypot`; edit the `.service` file if not.
 - Isolate the Pi on a guest network/VLAN, then forward 22/23 from the router.
 - Optional: DShield output plugin.
 - Analyze captured samples in an isolated VM (for example with Ghidra).
+
+## License
+
+The scripts and configuration in this repository are under the [MIT](LICENSE) license.
+Cowrie, Grafana, Postgres and the DB-IP database are separate projects with their own
+licenses, and are not included here.
