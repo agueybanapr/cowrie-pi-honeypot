@@ -16,14 +16,17 @@ MAX_TOTAL = 4 * 1024**3
 MAX_SAMPLE = 256 * 1024
 
 
-def write_file(folder, name, chunks):
-    """Write chunks to folder/name via a private temp file, which is removed on any failure."""
+def write_file(folder, name, chunks, mtime):
+    """Write chunks to folder/name via a private temp file, which is removed on any failure.
+    The file keeps its modification time from the Pi, so ingest can skip logs that haven't
+    changed instead of re-reading every file on every pull."""
     with tempfile.NamedTemporaryFile(dir=folder, prefix=".pull-", delete=False) as tmp:
         try:
             for chunk in chunks:
                 tmp.write(chunk)
             tmp.flush()
             os.chmod(tmp.name, 0o600)   # captured data stays private to you
+            os.utime(tmp.name, (mtime, mtime))
             os.replace(tmp.name, folder / name)
         except BaseException:
             os.unlink(tmp.name)
@@ -38,7 +41,7 @@ def save_sample(archive, member, name):
     if hashlib.sha256(data).hexdigest() != name or b"\0" in data:
         print(f"skipped sample that failed checks: {name}", file=sys.stderr)
         return 0
-    write_file(SAMPLES, name, [data])
+    write_file(SAMPLES, name, [data], member.mtime)
     return 1
 
 
@@ -70,7 +73,7 @@ def main():
                 total += member.size
                 if total > MAX_TOTAL:
                     sys.exit("archive exceeds the size limit; stopping")
-                write_file(OUT, name, read_chunks(archive.extractfile(member)))
+                write_file(OUT, name, read_chunks(archive.extractfile(member)), member.mtime)
                 count += 1
     finally:
         if proc.stdout:
